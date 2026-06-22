@@ -1,13 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings } from 'lucide-react';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+
   const adminInfo = JSON.parse(
     localStorage.getItem('adminInfo') || sessionStorage.getItem('adminInfo') || '{}'
   );
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+        const res = await axios.get('http://localhost:5000/api/admin/users', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setUsers(res.data.users);
+      } catch (err) {
+        console.error('Failed to fetch users', err);
+        setError('Failed to load user data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const handleLogout = () => {
     // Clear from both storages
@@ -19,7 +43,7 @@ const AdminDashboard = () => {
   };
 
   const stats = [
-    { label: 'Total Users', value: '1,284', icon: Users, color: 'from-[#4f46e5] to-[#7154c1]' },
+    { label: 'Total Users', value: loading ? '...' : users.length.toString(), icon: Users, color: 'from-[#4f46e5] to-[#7154c1]' },
     { label: 'Reports', value: '99%', icon: BarChart3, color: 'from-[#f46b45] to-[#e05d3a]' },
     { label: 'Happy Clients', value: '836', icon: Shield, color: 'from-[#22c55e] to-[#16a34a]' },
     { label: 'Cases Solved', value: '583', icon: LayoutDashboard, color: 'from-[#f59e0b] to-[#d97706]' },
@@ -41,18 +65,28 @@ const AdminDashboard = () => {
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1">
-        <Link to="/admin/dashboard" className="flex items-center gap-3 bg-white/10 text-white rounded-xl px-4 py-3 text-sm font-semibold">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${
+              activeTab === 'dashboard' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white hover:bg-white/5'
+            }`}
+          >
             <LayoutDashboard className="w-4 h-4" /> Dashboard
-          </Link>
-          <a href="#" className="flex items-center gap-3 text-white/40 hover:text-white hover:bg-white/5 rounded-xl px-4 py-3 text-sm font-medium transition-colors">
+          </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${
+              activeTab === 'users' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white hover:bg-white/5'
+            }`}
+          >
             <Users className="w-4 h-4" /> Users
-          </a>
-          <a href="#" className="flex items-center gap-3 text-white/40 hover:text-white hover:bg-white/5 rounded-xl px-4 py-3 text-sm font-medium transition-colors">
+          </button>
+          <button type="button" className="w-full flex items-center gap-3 text-white/40 hover:text-white hover:bg-white/5 rounded-xl px-4 py-3 text-sm font-medium transition-colors">
             <BarChart3 className="w-4 h-4" /> Analytics
-          </a>
-          <a href="#" className="flex items-center gap-3 text-white/40 hover:text-white hover:bg-white/5 rounded-xl px-4 py-3 text-sm font-medium transition-colors">
+          </button>
+          <button type="button" className="w-full flex items-center gap-3 text-white/40 hover:text-white hover:bg-white/5 rounded-xl px-4 py-3 text-sm font-medium transition-colors">
             <Settings className="w-4 h-4" /> Settings
-          </a>
+          </button>
         </nav>
 
         <div className="px-4 py-6 border-t border-white/10">
@@ -77,12 +111,19 @@ const AdminDashboard = () => {
       {/* Main content */}
       <div className="ml-64 p-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-extrabold text-[#1a1f2c] tracking-tight">Dashboard Overview</h1>
-          <p className="text-gray-400 text-sm mt-1">Welcome back, {adminInfo.name || 'Admin'}! Here's what's happening.</p>
+          <h1 className="text-2xl font-extrabold text-[#1a1f2c] tracking-tight">
+            {activeTab === 'dashboard' ? 'Dashboard Overview' : 'User Management'}
+          </h1>
+          <p className="text-gray-400 text-sm mt-1">
+            {activeTab === 'dashboard' 
+              ? `Welcome back, ${adminInfo.name || 'Admin'}! Here's what's happening.`
+              : 'View and manage all registered accounts on the platform.'}
+          </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {activeTab === 'dashboard' && (
+          /* Stats Grid */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, i) => (
             <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-4 shadow-lg`}>
@@ -93,17 +134,74 @@ const AdminDashboard = () => {
             </div>
           ))}
         </div>
+        )}
 
-        {/* Placeholder Panel */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4f46e5] to-[#7154c1] flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <LayoutDashboard className="w-8 h-8 text-white" />
+        {activeTab === 'users' && (
+        /* User Data Table */
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-[#1a1f2c]">Registered Users</h2>
+            <div className="text-sm text-gray-500 font-medium">Live Database</div>
           </div>
-          <h2 className="text-xl font-bold text-[#1a1f2c] mb-2">Admin Dashboard Active</h2>
-          <p className="text-gray-400 text-sm max-w-sm mx-auto">
-            You are successfully logged in as master admin. More sections and management features can be added here.
-          </p>
+          
+          <div className="overflow-x-auto">
+            {loading ? (
+              <div className="p-8 text-center text-gray-500">
+                <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                Loading users...
+              </div>
+            ) : error ? (
+              <div className="p-8 text-center text-red-500 font-medium">
+                {error}
+              </div>
+            ) : users.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p>No users registered yet.</p>
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50">
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">User</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Email Address</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Registration Date</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
+                            {user.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-semibold text-gray-900">{user.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {new Date(user.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/50">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          Active
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
+        )}
       </div>
     </div>
   );
