@@ -56,7 +56,7 @@ const Login = () => {
       window.dispatchEvent(new Event('authChange'));
 
       setTimeout(() => {
-        navigate('/');
+        navigate('/dashboard');
       }, 1500);
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong. Please try again.');

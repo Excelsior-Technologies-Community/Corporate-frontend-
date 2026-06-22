@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings } from 'lucide-react';
+import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings, Ban, CheckCircle2, Trash2 } from 'lucide-react';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -32,6 +32,37 @@ const AdminDashboard = () => {
     };
     fetchUsers();
   }, []);
+
+  const handleToggleStatus = async (userId) => {
+    try {
+      const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+      const res = await axios.put(`http://localhost:5000/api/admin/users/${userId}/status`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Update local state
+      setUsers(users.map(u => u.id === userId ? { ...u, status: res.data.newStatus } : u));
+    } catch (err) {
+      console.error('Failed to toggle status', err);
+      alert('Failed to update user status. Please try again.');
+    }
+  };
+
+  const handleDeleteUser = async (userId, userName) => {
+    const isConfirmed = window.confirm(`Are you sure you want to permanently delete ${userName}? This action cannot be undone.`);
+    if (!isConfirmed) return;
+
+    try {
+      const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+      await axios.delete(`http://localhost:5000/api/admin/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Remove from local state immediately
+      setUsers(users.filter(u => u.id !== userId));
+    } catch (err) {
+      console.error('Failed to delete user', err);
+      alert('Failed to delete user. Please try again.');
+    }
+  };
 
   const handleLogout = () => {
     // Clear from both storages
@@ -167,6 +198,7 @@ const AdminDashboard = () => {
                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Email Address</th>
                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Registration Date</th>
                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Status</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -189,10 +221,43 @@ const AdminDashboard = () => {
                         })}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/50">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          Active
-                        </span>
+                        {user.status === 'suspended' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-red-50 text-red-700 border border-red-200/50">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                            Suspended
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/50">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {user.status === 'suspended' ? (
+                          <button
+                            onClick={() => handleToggleStatus(user.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-200"
+                            title="Activate User"
+                          >
+                            <CheckCircle2 className="w-4 h-4" /> Activate
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleStatus(user.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-200"
+                            title="Suspend User"
+                          >
+                            <Ban className="w-4 h-4" /> Suspend
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteUser(user.id, user.name)}
+                          className="inline-flex items-center justify-center p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete User permanently"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}

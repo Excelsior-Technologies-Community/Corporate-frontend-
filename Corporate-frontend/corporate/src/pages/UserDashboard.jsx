@@ -1,0 +1,177 @@
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Settings, Activity, Folder, Plus, ArrowRight, Clock, Star, ArrowLeft, LogOut } from 'lucide-react';
+
+const UserDashboard = () => {
+  const navigate = useNavigate();
+  const [userInfo, setUserInfo] = useState({});
+
+  useEffect(() => {
+    const info = localStorage.getItem('userInfo') || sessionStorage.getItem('userInfo');
+    if (info) {
+      setUserInfo(JSON.parse(info));
+    } else {
+      navigate('/login');
+    }
+  }, [navigate]);
+
+  const recentActivity = [
+    { title: 'Account created', date: 'Just now', icon: Star, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+    { title: 'Profile updated', date: '2 days ago', icon: Settings, color: 'text-blue-500', bg: 'bg-blue-50' },
+    { title: 'Welcome email received', date: '2 days ago', icon: MailIcon, color: 'text-green-500', bg: 'bg-green-50' },
+  ];
+
+  const handleLogout = () => {
+    localStorage.removeItem('userToken');
+    localStorage.removeItem('userInfo');
+    sessionStorage.removeItem('userToken');
+    sessionStorage.removeItem('userInfo');
+    window.dispatchEvent(new Event('authChange'));
+    navigate('/');
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] font-sans pb-12">
+      {/* Dashboard Top Navigation */}
+      <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
+        <Link to="/" className="text-xl font-bold text-[#1a1f2c] flex items-baseline">
+          Corporate
+          <span className="w-1.5 h-1.5 rounded-full bg-[#f43f5e] ml-0.5"></span>
+        </Link>
+        <div className="flex items-center gap-4">
+          <Link 
+            to="/"
+            className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-[#1a1f2c] transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Website
+          </Link>
+          <div className="w-px h-6 bg-gray-200 mx-2"></div>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-sm font-semibold text-red-500 hover:text-red-600 transition-colors"
+          >
+            <LogOut className="w-4 h-4" /> Sign Out
+          </button>
+        </div>
+      </nav>
+
+      {/* Top Banner */}
+      <div className="bg-gradient-to-r from-[#0f0c29] via-[#302b63] to-[#24243e] pt-16 pb-32 px-8 relative overflow-hidden">
+        {/* Abstract background shapes */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+          <div className="absolute top-1/2 -left-24 w-72 h-72 bg-rose-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+        </div>
+        
+        <div className="max-w-6xl mx-auto relative z-10">
+          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+            Welcome back, {userInfo.name?.split(' ')[0]}!
+          </h1>
+          <p className="text-gray-400 mt-2 text-lg">
+            Here's what's happening with your account today.
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-8 -mt-16 relative z-20">
+        {/* Main Stats/Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer group">
+            <div>
+              <p className="text-gray-500 text-sm font-medium mb-1">Active Projects</p>
+              <p className="text-3xl font-bold text-[#1a1f2c]">0</p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Folder className="w-6 h-6 text-indigo-600" />
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer group">
+            <div>
+              <p className="text-gray-500 text-sm font-medium mb-1">Consultations</p>
+              <p className="text-3xl font-bold text-[#1a1f2c]">None</p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Activity className="w-6 h-6 text-emerald-600" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-[#4f46e5] to-[#7154c1] rounded-2xl p-6 shadow-lg text-white flex flex-col justify-center relative overflow-hidden group cursor-pointer">
+            <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 rounded-full bg-white opacity-10 group-hover:scale-150 transition-transform duration-500"></div>
+            <h3 className="text-lg font-bold mb-1 relative z-10">Start a new project</h3>
+            <p className="text-indigo-100 text-sm mb-3 relative z-10">Get in touch with our team</p>
+            <div className="flex items-center gap-2 text-sm font-semibold relative z-10">
+              Explore <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content Area */}
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-[#1a1f2c]">Your Projects</h2>
+                <button className="text-indigo-600 text-sm font-medium hover:text-indigo-700 flex items-center gap-1">
+                  <Plus className="w-4 h-4" /> New
+                </button>
+              </div>
+              <div className="p-12 text-center text-gray-500">
+                <Folder className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                <p className="text-gray-900 font-medium mb-1">No active projects</p>
+                <p className="text-sm">When you start a project with us, it will appear here.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar Area */}
+          <div className="space-y-8">
+            {/* Profile Summary */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#f46b45] to-[#f59e0b] flex items-center justify-center text-white font-bold text-xl shadow-md">
+                  {userInfo.name?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="font-bold text-[#1a1f2c]">{userInfo.name}</h3>
+                  <p className="text-sm text-gray-500 truncate w-40">{userInfo.email}</p>
+                </div>
+              </div>
+              <Link 
+                to="/settings"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Settings className="w-4 h-4" /> Edit Profile
+              </Link>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-lg font-bold text-[#1a1f2c] mb-4">Recent Activity</h2>
+              <div className="space-y-4">
+                {recentActivity.map((activity, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-full ${activity.bg} flex items-center justify-center flex-shrink-0`}>
+                      <activity.icon className={`w-4 h-4 ${activity.color}`} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{activity.date}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Helper icon
+const MailIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+);
+
+export default UserDashboard;
