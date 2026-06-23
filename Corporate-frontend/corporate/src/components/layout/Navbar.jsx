@@ -3,6 +3,49 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Search, Mail, UserCircle, LogOut, Menu, X, ChevronDown, LayoutDashboard, Settings } from 'lucide-react';
 
+const ServiceIcon1 = () => (
+  <svg className="w-7 h-7 mr-4 text-white stroke-current stroke-[1.2] fill-none" viewBox="0 0 24 24">
+    <path d="M12 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11z" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M9.5 13v7.5l2.5-1.5 2.5 1.5V13" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M11.5 6v3.5h1" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10.5 7l1-1" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const ServiceIcon2 = () => (
+  <svg className="w-7 h-7 mr-4 text-white stroke-current stroke-[1.2] fill-none" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="7.5"/>
+    <circle cx="12" cy="12" r="3.5"/>
+    <path d="M12 12l-6-6" strokeLinecap="round"/>
+    <path d="M9 5H5v4" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 21v2M21 12h2M3 12H1M12 3V1" strokeLinecap="round"/>
+  </svg>
+);
+
+const ServiceIcon3 = () => (
+  <svg className="w-7 h-7 mr-4 text-white stroke-current stroke-[1.2] fill-none" viewBox="0 0 24 24">
+    <path d="M18 14H9.5a2.5 2.5 0 0 0 0 5h6.5l3-1.5v-1.5a2 2 0 0 0-1-2z" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M9.5 14H4a1 1 0 0 0-1 1v1h5.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <ellipse cx="12" cy="9" rx="2.5" ry="1"/>
+    <path d="M9.5 9v1.5c0 .55 1.12 1 2.5 1s2.5-.45 2.5-1V9" strokeLinecap="round"/>
+    <ellipse cx="11.5" cy="5" rx="2.5" ry="1"/>
+    <path d="M9 5v1.5c0 .55 1.12 1 2.5 1s2.5-.45 2.5-1V5" strokeLinecap="round"/>
+    <ellipse cx="15.5" cy="7" rx="2.5" ry="1"/>
+    <path d="M13 7v1.5c0 .55 1.12 1 2.5 1s2.5-.45 2.5-1V7" strokeLinecap="round"/>
+  </svg>
+);
+
+const ServiceIcon4 = () => (
+  <svg className="w-7 h-7 mr-4 text-white stroke-current stroke-[1.2] fill-none" viewBox="0 0 24 24">
+    <path d="M7 8l-2.5 12h15L17 8Z" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M9 5c0-1.5 1.5-2 3-2s3 .5 3 2c0 2-3 3-3 3s-3-1-3-3z" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M6.5 8h11" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 12v5" strokeLinecap="round"/>
+    <path d="M10 13.5h4" strokeLinecap="round"/>
+    <path d="M10.5 15.5h3" strokeLinecap="round"/>
+  </svg>
+);
+
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -72,7 +115,7 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className="w-full bg-white px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-50">
+    <nav className="w-full bg-white px-6 flex items-center justify-between shadow-sm sticky top-0 z-50 h-[80px]">
       {/* Logo */}
       <div className="flex-shrink-0">
         <Link to="/" className="text-2xl font-bold text-[#1a1f2c] flex items-baseline">
@@ -82,20 +125,68 @@ const Navbar = () => {
       </div>
 
       {/* Navigation Links */}
-      <div className="hidden lg:flex items-center space-x-8">
-        {navLinks.map(({ label, to }) => (
-          <Link
-            key={to}
-            to={to}
-            className={`text-[15px] transition-colors ${
-              location.pathname === to
-                ? 'font-semibold text-[#1a1f2c]'
-                : 'font-medium text-gray-600 hover:text-[#1a1f2c]'
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
+      <div className="hidden lg:flex items-center space-x-8 h-full">
+        {navLinks.map(({ label, to }) => {
+          if (label === 'Services') {
+            return (
+              <div key={to} className="relative group h-full flex items-center">
+                <Link
+                  to={to}
+                  className={`text-[16px] transition-colors py-[28px] ${
+                    location.pathname.startsWith(to)
+                      ? 'font-semibold text-[#1a1f2c]'
+                      : 'font-medium text-gray-600 group-hover:text-[#1a1f2c]'
+                  }`}
+                >
+                  {label}
+                </Link>
+                {/* Dropdown Menu */}
+                <div className="absolute top-[80px] left-1/2 -translate-x-1/2 w-[300px] bg-[#242b3d] opacity-0 invisible translate-y-3 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-50 border border-[#30384d]/50">
+                  <ul className="flex flex-col">
+                    <li>
+                      <Link to="/services/planning" className="flex items-center px-8 py-[18px] hover:bg-[#2a3246] transition-colors border-b border-[#30384d] group/item">
+                        <ServiceIcon1 />
+                        <span className="text-[15px] text-white">Business planning</span>
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/services/research" className="flex items-center px-8 py-[18px] hover:bg-[#2a3246] transition-colors border-b border-[#30384d] group/item">
+                        <ServiceIcon2 />
+                        <span className="text-[15px] text-white">Market research</span>
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/services/consulting" className="flex items-center px-8 py-[18px] hover:bg-[#2a3246] transition-colors border-b border-[#30384d] group/item">
+                        <ServiceIcon3 />
+                        <span className="text-[15px] text-white">Business consulting</span>
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/services/analysis" className="flex items-center px-8 py-[18px] hover:bg-[#2a3246] transition-colors group/item">
+                        <ServiceIcon4 />
+                        <span className="text-[15px] text-white">Audience analysis</span>
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={to}
+              to={to}
+              className={`text-[16px] transition-colors py-[28px] flex items-center ${
+                location.pathname === to
+                  ? 'font-semibold text-[#1a1f2c]'
+                  : 'font-medium text-gray-600 hover:text-[#1a1f2c]'
+              }`}
+            >
+              {label}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Right Side Actions */}

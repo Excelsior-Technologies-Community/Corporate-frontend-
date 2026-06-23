@@ -2,6 +2,7 @@ import React from 'react';
 import Navbar from '../components/layout/Navbar';
 import Hero from '../components/Hero';
 import AboutSection from '../components/AboutSection';
+import Footer from '../components/layout/Footer';
 
 const Home = () => {
   return (
@@ -12,6 +13,8 @@ const Home = () => {
         <Hero />
         <AboutSection />
       </main>
+      
+      <Footer />
     </div>
   );
 };

@@ -64,15 +64,6 @@ const AboutSection = () => {
                 Years working experience
               </span>
             </div>
-
-            {/* Trophy Image overlayed */}
-            <img 
-              src="/about-trophy.png" 
-              alt="Trophy" 
-              className="absolute z-20 w-[80%] md:w-[60%] lg:w-[70%] max-w-[450px] left-0 bottom-0 lg:-ml-12 lg:-mb-10 object-contain drop-shadow-2xl mix-blend-multiply"
-            />
-
-            {/* Blue Floating Badge */}
             <div className="absolute top-10 right-4 md:right-16 lg:right-10 z-30 animate-[bounce_5s_infinite]">
               <div className="w-28 h-28 lg:w-[130px] lg:h-[130px] rounded-full bg-[#3b2dbb] flex flex-col items-center justify-center text-white shadow-2xl relative">
                 <div className="absolute -top-3 bg-white rounded-full p-1 shadow-md">

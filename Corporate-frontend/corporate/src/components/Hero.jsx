@@ -63,18 +63,6 @@ const Hero = () => {
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       </button>
-
-      {/* Side Text */}
-      <div className="absolute right-0 bottom-40 origin-bottom-right -rotate-90 text-[10px] font-semibold tracking-[0.2em] text-white/80 hidden lg:block bg-black/20 px-4 py-2 rounded-t-md backdrop-blur-sm">
-        56+ PRE-BUILT SITES
-      </div>
-      
-      {/* Bottom right floating button */}
-      <button className="absolute right-6 bottom-6 w-14 h-14 bg-[#22c55e] rounded-md flex items-center justify-center shadow-lg z-20 hover:bg-[#16a34a] transition-colors">
-        <svg viewBox="0 0 24 24" fill="white" className="w-7 h-7">
-          <path d="M12 2C6.48 2 2 5.58 2 10c0 2.54 1.45 4.8 3.75 6.22C5.6 17.5 5.2 19.3 5.1 19.8c-.1.3.1.6.4.6.1 0 .2 0 .3-.1 1.7-1.1 3.5-1.9 4.3-2.1.6.1 1.3.2 1.9.2 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
-        </svg>
-      </button>
     </section>
   );
 };

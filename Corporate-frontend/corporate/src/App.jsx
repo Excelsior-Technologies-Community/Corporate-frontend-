@@ -7,6 +7,10 @@ import AdminDashboard from './pages/AdminDashboard';
 import UserDashboard from './pages/UserDashboard';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Services from './pages/Services';
+import Settings from './pages/Settings';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 // Global Axios Interceptor for handling auto-logout on suspension
 axios.interceptors.response.use(
@@ -49,8 +53,11 @@ export default function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
+        <Route path="/services" element={<Services />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* User Routes */}
         <Route
@@ -58,6 +65,14 @@ export default function App() {
           element={
             <UserProtectedRoute>
               <UserDashboard />
+            </UserProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <UserProtectedRoute>
+              <Settings />
             </UserProtectedRoute>
           }
         />
