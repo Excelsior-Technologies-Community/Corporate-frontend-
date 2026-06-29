@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Settings, Activity, Folder, Plus, ArrowRight, Clock, Star, ArrowLeft, LogOut } from 'lucide-react';
+import axios from 'axios';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
   const [userInfo, setUserInfo] = useState({});
+  const [dashboardData, setDashboardData] = useState({ stats: { activeProjects: 0, activeConsultations: 0 }, projects: [], activities: [] });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const info = localStorage.getItem('userInfo') || sessionStorage.getItem('userInfo');
@@ -15,11 +18,52 @@ const UserDashboard = () => {
     }
   }, [navigate]);
 
-  const recentActivity = [
-    { title: 'Account created', date: 'Just now', icon: Star, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-    { title: 'Profile updated', date: '2 days ago', icon: Settings, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { title: 'Welcome email received', date: '2 days ago', icon: MailIcon, color: 'text-green-500', bg: 'bg-green-50' },
-  ];
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+
+  const fetchDashboard = useCallback(async () => {
+    const token = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+    if (!token) return;
+    try {
+      const res = await axios.get('http://localhost:5000/api/users/dashboard', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setDashboardData(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  const handleCreateProject = async (e) => {
+    e.preventDefault();
+    if (!newProjectName.trim()) return;
+    
+    const token = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+    setIsCreatingProject(true);
+    
+    try {
+      await axios.post('http://localhost:5000/api/users/projects', 
+        { name: newProjectName },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setIsProjectModalOpen(false);
+      setNewProjectName('');
+      fetchDashboard(); // refresh data
+    } catch (err) {
+      console.error('Failed to create project:', err);
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('userToken');
@@ -79,7 +123,7 @@ const UserDashboard = () => {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer group">
             <div>
               <p className="text-gray-500 text-sm font-medium mb-1">Active Projects</p>
-              <p className="text-3xl font-bold text-[#1a1f2c]">0</p>
+              <p className="text-3xl font-bold text-[#1a1f2c]">{loading ? '...' : dashboardData.stats.activeProjects}</p>
             </div>
             <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Folder className="w-6 h-6 text-indigo-600" />
@@ -89,14 +133,14 @@ const UserDashboard = () => {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer group">
             <div>
               <p className="text-gray-500 text-sm font-medium mb-1">Consultations</p>
-              <p className="text-3xl font-bold text-[#1a1f2c]">None</p>
+              <p className="text-3xl font-bold text-[#1a1f2c]">{loading ? '...' : dashboardData.stats.activeConsultations}</p>
             </div>
             <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Activity className="w-6 h-6 text-emerald-600" />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-[#4f46e5] to-[#7154c1] rounded-2xl p-6 shadow-lg text-white flex flex-col justify-center relative overflow-hidden group cursor-pointer">
+          <div onClick={() => setIsProjectModalOpen(true)} className="bg-gradient-to-br from-[#4f46e5] to-[#7154c1] rounded-2xl p-6 shadow-lg text-white flex flex-col justify-center relative overflow-hidden group cursor-pointer">
             <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 rounded-full bg-white opacity-10 group-hover:scale-150 transition-transform duration-500"></div>
             <h3 className="text-lg font-bold mb-1 relative z-10">Start a new project</h3>
             <p className="text-indigo-100 text-sm mb-3 relative z-10">Get in touch with our team</p>
@@ -112,15 +156,31 @@ const UserDashboard = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-[#1a1f2c]">Your Projects</h2>
-                <button className="text-indigo-600 text-sm font-medium hover:text-indigo-700 flex items-center gap-1">
+                <button onClick={() => setIsProjectModalOpen(true)} className="text-indigo-600 text-sm font-medium hover:text-indigo-700 flex items-center gap-1">
                   <Plus className="w-4 h-4" /> New
                 </button>
               </div>
-              <div className="p-12 text-center text-gray-500">
-                <Folder className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-gray-900 font-medium mb-1">No active projects</p>
-                <p className="text-sm">When you start a project with us, it will appear here.</p>
-              </div>
+              {loading ? (
+                <div className="p-12 text-center text-gray-500">Loading...</div>
+              ) : dashboardData.projects.length === 0 ? (
+                <div className="p-12 text-center text-gray-500">
+                  <Folder className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                  <p className="text-gray-900 font-medium mb-1">No active projects</p>
+                  <p className="text-sm">When you start a project with us, it will appear here.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {dashboardData.projects.map((proj) => (
+                    <div key={proj.id} className="p-4 hover:bg-gray-50 flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-[#1a1f2c]">{proj.name}</p>
+                        <p className="text-sm text-gray-500 capitalize">Status: {proj.status}</p>
+                      </div>
+                      <span className="text-sm text-gray-400">{new Date(proj.created_at).toLocaleDateString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -148,23 +208,83 @@ const UserDashboard = () => {
             {/* Recent Activity */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-lg font-bold text-[#1a1f2c] mb-4">Recent Activity</h2>
-              <div className="space-y-4">
-                {recentActivity.map((activity, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <div className={`w-8 h-8 rounded-full ${activity.bg} flex items-center justify-center flex-shrink-0`}>
-                      <activity.icon className={`w-4 h-4 ${activity.color}`} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{activity.date}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {loading ? (
+                <p className="text-sm text-gray-500">Loading...</p>
+              ) : dashboardData.activities.length === 0 ? (
+                <p className="text-sm text-gray-500">No recent activity.</p>
+              ) : (
+                <div className="space-y-4">
+                  {dashboardData.activities.map((activity) => {
+                    const isSignup = activity.type === 'signup';
+                    const isUpdate = activity.type === 'update';
+                    const Icon = isSignup ? Star : isUpdate ? Settings : Activity;
+                    const color = isSignup ? 'text-yellow-500' : isUpdate ? 'text-blue-500' : 'text-emerald-500';
+                    const bg = isSignup ? 'bg-yellow-50' : isUpdate ? 'bg-blue-50' : 'bg-emerald-50';
+
+                    return (
+                      <div key={activity.id} className="flex items-start gap-3">
+                        <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center flex-shrink-0`}>
+                          <Icon className={`w-4 h-4 ${color}`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{new Date(activity.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Project Modal */}
+      {isProjectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-lg text-[#1a1f2c]">Create New Project</h3>
+              <button 
+                onClick={() => setIsProjectModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleCreateProject} className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
+                <input 
+                  type="text"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  placeholder="e.g. Website Redesign"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-3 mt-8">
+                <button 
+                  type="button"
+                  onClick={() => setIsProjectModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isCreatingProject || !newProjectName.trim()}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {isCreatingProject ? 'Creating...' : 'Create Project'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
