@@ -11,6 +11,8 @@ import Services from './pages/Services';
 import Settings from './pages/Settings';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Testimonials from './pages/Testimonials';
+import Pricing from './pages/Pricing';
 
 // Global Axios Interceptor for handling auto-logout on suspension
 axios.interceptors.response.use(
@@ -54,6 +56,8 @@ export default function App() {
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/services" element={<Services />} />
+        <Route path="/testimonials" element={<Testimonials />} />
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

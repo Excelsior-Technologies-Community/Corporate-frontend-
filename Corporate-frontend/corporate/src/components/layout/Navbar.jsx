@@ -173,6 +173,7 @@ const Navbar = () => {
             );
           }
 
+
           return (
             <Link
               key={to}
@@ -286,19 +287,22 @@ const Navbar = () => {
       {isMobileMenuOpen && (
         <div className="absolute top-full left-0 w-full bg-white shadow-xl border-t border-gray-100 lg:hidden flex flex-col py-4 px-6 space-y-4">
           <div className="flex flex-col space-y-4">
-            {navLinks.map(({ label, to }) => (
-              <Link
-                key={to}
-                to={to}
-                className={`text-[15px] transition-colors ${
-                  location.pathname === to
-                    ? 'font-semibold text-[#1a1f2c]'
-                    : 'font-medium text-gray-600 hover:text-[#1a1f2c]'
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
+            {navLinks.map(({ label, to }) => {
+
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  className={`text-[15px] transition-colors ${
+                    location.pathname === to
+                      ? 'font-semibold text-[#1a1f2c]'
+                      : 'font-medium text-gray-600 hover:text-[#1a1f2c]'
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
           </div>
           
           <div className="pt-4 border-t border-gray-100 flex flex-col space-y-4">

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import ImageUpload from '../components/admin/ImageUpload';
 
-import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings, Ban, CheckCircle2, Trash2, Briefcase, Plus, Pencil, X, ChevronDown } from 'lucide-react';
+import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings, Ban, CheckCircle2, Trash2, Briefcase, Plus, Pencil, X, ChevronDown, MessageSquare } from 'lucide-react';
+import ManageTestimonials from '../components/admin/ManageTestimonials';
 
 const API = 'http://localhost:5000/api';
 
@@ -43,6 +45,9 @@ const AdminDashboard = () => {
       } catch (err) {
         console.error('Failed to fetch users', err);
         setError('Failed to load user data.');
+        if (err.response?.status === 401) {
+          handleLogout();
+        }
       } finally {
         setLoading(false);
       }
@@ -138,6 +143,7 @@ const AdminDashboard = () => {
       fetchServices();
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
+      if (err.response?.status === 401) handleLogout();
       setFormError(err.response?.data?.message || 'Failed to save service.');
     } finally {
       setFormLoading(false);
@@ -169,6 +175,7 @@ const AdminDashboard = () => {
     { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { key: 'users', icon: Users, label: 'Users' },
     { key: 'services', icon: Briefcase, label: 'Services' },
+    { key: 'testimonials', icon: MessageSquare, label: 'Testimonials' },
     { key: 'analytics', icon: BarChart3, label: 'Analytics' },
     { key: 'settings', icon: Settings, label: 'Settings' },
   ];
@@ -231,7 +238,8 @@ const AdminDashboard = () => {
             {activeTab === 'dashboard' ? `Welcome back, ${adminInfo.name || 'Admin'}! Here's what's happening.`
               : activeTab === 'users' ? 'View and manage all registered accounts on the platform.'
               : activeTab === 'services' ? 'Add, edit, or remove corporate service cards shown on the public Services page.'
-              : ''}
+              : activeTab === 'testimonials' ? 'Manage customer stories and reviews.'
+              : 'Configure your application preferences and settings.'}
           </p>
         </div>
 
@@ -401,11 +409,10 @@ const AdminDashboard = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Image URL / Path</label>
-                      <input
-                        type="text" name="image_url" value={formData.image_url} onChange={handleFormChange}
-                        placeholder="e.g. images/demo-corporate-services-01.jpg or https://..."
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      <ImageUpload 
+                        label="Image URL / Path"
+                        value={formData.image_url}
+                        onChange={(url) => setFormData({ ...formData, image_url: url })}
                       />
                     </div>
 
@@ -506,6 +513,9 @@ const AdminDashboard = () => {
               )}
             </div>
           </div>
+        )}
+        {activeTab === 'testimonials' && (
+          <ManageTestimonials />
         )}
       </div>
     </div>
