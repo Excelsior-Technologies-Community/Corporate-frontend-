@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ImageUpload from '../components/admin/ImageUpload';
 
-import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings, Ban, CheckCircle2, Trash2, Briefcase, Plus, Pencil, X, ChevronDown, MessageSquare } from 'lucide-react';
+import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings, Ban, CheckCircle2, Trash2, Briefcase, Plus, Pencil, X, ChevronDown, MessageSquare, CreditCard, TrendingUp, DollarSign, Clock } from 'lucide-react';
 import ManageTestimonials from '../components/admin/ManageTestimonials';
 
 const API = 'http://localhost:5000/api';
@@ -16,8 +16,11 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [services, setServices] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [subscriptionStats, setSubscriptionStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [servicesLoading, setServicesLoading] = useState(true);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -36,28 +39,48 @@ const AdminDashboard = () => {
   const getToken = () => localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchInitialData = async () => {
       try {
-        const res = await axios.get(`${API}/admin/users`, {
-          headers: { Authorization: `Bearer ${getToken()}` }
-        });
-        setUsers(res.data.users);
+        const [usersRes, statsRes] = await Promise.all([
+          axios.get(`${API}/admin/users`, { headers: { Authorization: `Bearer ${getToken()}` } }),
+          axios.get(`${API}/subscriptions/stats`, { headers: { Authorization: `Bearer ${getToken()}` } }),
+        ]);
+        setUsers(usersRes.data.users);
+        setSubscriptionStats(statsRes.data.data);
       } catch (err) {
-        console.error('Failed to fetch users', err);
-        setError('Failed to load user data.');
-        if (err.response?.status === 401) {
-          handleLogout();
-        }
+        console.error('Failed to fetch initial data', err);
+        setError('Failed to load data.');
+        if (err.response?.status === 401) handleLogout();
       } finally {
         setLoading(false);
       }
     };
-    fetchUsers();
+    fetchInitialData();
   }, []);
 
   useEffect(() => {
     fetchServices();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'subscriptions') fetchSubscriptions();
+  }, [activeTab]);
+
+  const fetchSubscriptions = async () => {
+    setSubscriptionsLoading(true);
+    try {
+      const [subsRes, statsRes] = await Promise.all([
+        axios.get(`${API}/subscriptions`, { headers: { Authorization: `Bearer ${getToken()}` } }),
+        axios.get(`${API}/subscriptions/stats`, { headers: { Authorization: `Bearer ${getToken()}` } }),
+      ]);
+      setSubscriptions(subsRes.data.data);
+      setSubscriptionStats(statsRes.data.data);
+    } catch (err) {
+      console.error('Failed to fetch subscriptions', err);
+    } finally {
+      setSubscriptionsLoading(false);
+    }
+  };
 
   const fetchServices = async () => {
     setServicesLoading(true);
@@ -167,14 +190,15 @@ const AdminDashboard = () => {
   const stats = [
     { label: 'Total Users', value: loading ? '...' : users.length.toString(), icon: Users, color: 'from-[#4f46e5] to-[#7154c1]' },
     { label: 'Services', value: servicesLoading ? '...' : services.length.toString(), icon: Briefcase, color: 'from-[#f46b45] to-[#e05d3a]' },
-    { label: 'Happy Clients', value: '836', icon: Shield, color: 'from-[#22c55e] to-[#16a34a]' },
-    { label: 'Cases Solved', value: '583', icon: LayoutDashboard, color: 'from-[#f59e0b] to-[#d97706]' },
+    { label: 'Subscriptions', value: subscriptionStats ? subscriptionStats.total.toString() : '...', icon: CreditCard, color: 'from-[#22c55e] to-[#16a34a]' },
+    { label: 'Total Revenue', value: subscriptionStats ? `$${Number(subscriptionStats.totalRevenue || 0).toFixed(0)}` : '...', icon: DollarSign, color: 'from-[#f59e0b] to-[#d97706]' },
   ];
 
   const navItems = [
     { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { key: 'users', icon: Users, label: 'Users' },
     { key: 'services', icon: Briefcase, label: 'Services' },
+    { key: 'subscriptions', icon: CreditCard, label: 'Subscriptions' },
     { key: 'testimonials', icon: MessageSquare, label: 'Testimonials' },
     { key: 'analytics', icon: BarChart3, label: 'Analytics' },
     { key: 'settings', icon: Settings, label: 'Settings' },
@@ -232,12 +256,17 @@ const AdminDashboard = () => {
       <div className="ml-64 p-8">
         <div className="mb-8">
           <h1 className="text-2xl font-extrabold text-[#1a1f2c] tracking-tight">
-            {activeTab === 'dashboard' ? 'Dashboard Overview' : activeTab === 'users' ? 'User Management' : activeTab === 'services' ? 'Services Management' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+            {activeTab === 'dashboard' ? 'Dashboard Overview'
+              : activeTab === 'users' ? 'User Management'
+              : activeTab === 'services' ? 'Services Management'
+              : activeTab === 'subscriptions' ? 'Subscription Management'
+              : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
           </h1>
           <p className="text-gray-400 text-sm mt-1">
             {activeTab === 'dashboard' ? `Welcome back, ${adminInfo.name || 'Admin'}! Here's what's happening.`
               : activeTab === 'users' ? 'View and manage all registered accounts on the platform.'
               : activeTab === 'services' ? 'Add, edit, or remove corporate service cards shown on the public Services page.'
+              : activeTab === 'subscriptions' ? 'Track all plan purchases, revenue, and subscriber details in real time.'
               : activeTab === 'testimonials' ? 'Manage customer stories and reviews.'
               : 'Configure your application preferences and settings.'}
           </p>
@@ -252,16 +281,18 @@ const AdminDashboard = () => {
 
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {stats.map((stat, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-4 shadow-lg`}>
-                  <stat.icon className="w-6 h-6 text-white" />
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {stats.map((stat, i) => (
+                <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-4 shadow-lg`}>
+                    <stat.icon className="w-6 h-6 text-white" />
+                  </div>
+                  <p className="text-3xl font-extrabold text-[#1a1f2c] tracking-tight">{stat.value}</p>
+                  <p className="text-sm text-gray-400 font-medium mt-1">{stat.label}</p>
                 </div>
-                <p className="text-3xl font-extrabold text-[#1a1f2c] tracking-tight">{stat.value}</p>
-                <p className="text-sm text-gray-400 font-medium mt-1">{stat.label}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
@@ -514,6 +545,123 @@ const AdminDashboard = () => {
             </div>
           </div>
         )}
+        {/* Subscriptions Tab */}
+        {activeTab === 'subscriptions' && (
+          <div>
+            {/* Stats mini-cards */}
+            {subscriptionStats && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#7154c1] flex items-center justify-center shadow-lg shrink-0">
+                    <CreditCard className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-extrabold text-[#1a1f2c]">{subscriptionStats.total}</p>
+                    <p className="text-sm text-gray-400">Total Subscriptions</p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#22c55e] to-[#16a34a] flex items-center justify-center shadow-lg shrink-0">
+                    <TrendingUp className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-extrabold text-[#1a1f2c]">{subscriptionStats.active}</p>
+                    <p className="text-sm text-gray-400">Active Plans</p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#d97706] flex items-center justify-center shadow-lg shrink-0">
+                    <DollarSign className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-extrabold text-[#1a1f2c]">${Number(subscriptionStats.totalRevenue || 0).toFixed(2)}</p>
+                    <p className="text-sm text-gray-400">Total Revenue</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Subscriptions Table */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-[#1a1f2c]">All Subscriptions</h2>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  <span className="text-sm text-gray-500 font-medium">Live Database</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                {subscriptionsLoading ? (
+                  <div className="p-8 text-center text-gray-500">
+                    <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    Loading subscriptions...
+                  </div>
+                ) : subscriptions.length === 0 ? (
+                  <div className="p-12 text-center text-gray-500">
+                    <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="font-medium">No subscriptions yet.</p>
+                    <p className="text-sm mt-1 text-gray-400">Subscriptions will appear here once users complete checkout.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50/50">
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">#</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Email</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Plan</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Amount</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Status</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {subscriptions.map((sub, idx) => (
+                        <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4 text-sm font-medium text-gray-400">{idx + 1}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                {sub.email.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="text-sm font-medium text-gray-900">{sub.email}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-block bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                              {sub.plan_name}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm font-bold text-gray-900">${Number(sub.price).toFixed(2)}</span>
+                            <span className="text-xs text-gray-400 ml-1">/mo</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            {sub.status === 'active' ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/50">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-red-50 text-red-700 border border-red-200/50">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> {sub.status}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                              <Clock className="w-3.5 h-3.5 text-gray-300" />
+                              {new Date(sub.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'testimonials' && (
           <ManageTestimonials />
         )}

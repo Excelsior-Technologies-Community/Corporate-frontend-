@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
+import CheckoutModal from '../components/CheckoutModal';
 import { ChevronDown, Check, X, CalendarCheck, Wallet, Clock, Plus, Minus, MessageSquare, Mail } from 'lucide-react';
 
 const Pricing = () => {
   const [activeFaq, setActiveFaq] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(null);
 
   const faqs = [
     {
@@ -20,6 +23,11 @@ const Pricing = () => {
       answer: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam, quis nostrud exercitation."
     }
   ];
+
+  const handleOpenModal = (planDetails) => {
+    setSelectedPlan(planDetails);
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-white font-sans overflow-x-hidden">
@@ -87,7 +95,9 @@ const Pricing = () => {
                     <span className="text-[44px] font-extrabold text-[#1a1f2c] tracking-tighter mr-3">$29</span>
                     <span className="text-[14px] text-gray-500 text-left leading-[1.3] w-28">Per user/month<br/>billed annually*</span>
                   </div>
-                  <button className="w-full py-3.5 px-6 bg-[#252840] hover:bg-black text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 group text-[15px]">
+                  <button 
+                    onClick={() => handleOpenModal({ name: 'Individual', price: 29, description: 'Perfect for freelancers and individual professionals.' })}
+                    className="w-full py-3.5 px-6 bg-[#252840] hover:bg-black text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 group text-[15px]">
                     Join this plan
                     <span className="transform group-hover:translate-x-1 transition-transform">→</span>
                   </button>
@@ -137,7 +147,9 @@ const Pricing = () => {
                     <span className="text-[44px] font-extrabold text-white tracking-tighter mr-3">$39</span>
                     <span className="text-[14px] text-gray-400 text-left leading-[1.3] w-28">Per user/month<br/>billed annually*</span>
                   </div>
-                  <button className="w-full py-3.5 px-6 bg-white hover:bg-gray-100 text-[#1a1f2c] font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 group text-[15px]">
+                  <button 
+                    onClick={() => handleOpenModal({ name: 'Business', price: 39, description: 'Ideal for growing businesses and small teams.' })}
+                    className="w-full py-3.5 px-6 bg-white hover:bg-gray-100 text-[#1a1f2c] font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 group text-[15px]">
                     Join this plan
                     <span className="transform group-hover:translate-x-1 transition-transform">→</span>
                   </button>
@@ -184,7 +196,9 @@ const Pricing = () => {
                     <span className="text-[44px] font-extrabold text-[#1a1f2c] tracking-tighter mr-3">$59</span>
                     <span className="text-[14px] text-gray-500 text-left leading-[1.3] w-28">Per user/month<br/>billed annually*</span>
                   </div>
-                  <button className="w-full py-3.5 px-6 bg-[#252840] hover:bg-black text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 group text-[15px]">
+                  <button 
+                    onClick={() => handleOpenModal({ name: 'Corporate', price: 59, description: 'Advanced features for large scale organizations.' })}
+                    className="w-full py-3.5 px-6 bg-[#252840] hover:bg-black text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 group text-[15px]">
                     Join this plan
                     <span className="transform group-hover:translate-x-1 transition-transform">→</span>
                   </button>
@@ -247,7 +261,7 @@ const Pricing = () => {
                           {activeFaq === index ? (
                             <Minus className="w-6 h-6 text-[#1a1f2c]" />
                           ) : (
-                            <Plus className="w-6 h-6" />
+                          <Plus className="w-6 h-6" />
                           )}
                         </span>
                       </button>
@@ -286,6 +300,12 @@ const Pricing = () => {
       </main>
 
       <Footer />
+      
+      <CheckoutModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        plan={selectedPlan} 
+      />
     </div>
   );
 };
