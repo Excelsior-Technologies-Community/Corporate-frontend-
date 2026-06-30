@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, EyeOff, Lock, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { Eye, EyeOff, Lock, CheckCircle, ArrowRight } from 'lucide-react';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -10,8 +11,7 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
   
   const searchParams = new URLSearchParams(location.search);
   const token = searchParams.get('token');
@@ -19,25 +19,22 @@ const ResetPassword = () => {
 
   useEffect(() => {
     if (!token || !email) {
-      setError('Invalid or missing reset token.');
+      toast.error('Invalid or missing reset token.');
     }
   }, [token, email]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.newPassword !== formData.confirmPassword) {
-      setError('Passwords do not match.');
+      toast.error('Passwords do not match.');
       return;
     }
     
     setLoading(true);
-    setError('');
-    setSuccess('');
 
     try {
       const res = await axios.post('http://localhost:5000/api/users/reset-password', {
@@ -46,13 +43,14 @@ const ResetPassword = () => {
         newPassword: formData.newPassword
       });
       
-      setSuccess(res.data.message);
+      toast.success(res.data.message);
+      setIsSuccess(true);
       
       setTimeout(() => {
         navigate('/login');
       }, 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong. Please try again.');
+      toast.error(err.response?.data?.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -75,18 +73,11 @@ const ResetPassword = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-white py-8 px-4 shadow-xl shadow-gray-200/50 sm:rounded-3xl sm:px-10 border border-gray-100">
           
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-center gap-3 text-sm">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
-
-          {success ? (
+          {isSuccess ? (
             <div className="text-center">
               <div className="mb-6 bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-xl flex items-center justify-center gap-3 text-sm">
                 <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                <p>{success}</p>
+                <p>Password reset successful</p>
               </div>
               <Link to="/login" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-500">
                 Go to Login <ArrowRight className="w-4 h-4" />

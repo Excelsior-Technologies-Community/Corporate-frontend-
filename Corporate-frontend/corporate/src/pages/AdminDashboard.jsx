@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 import ImageUpload from '../components/admin/ImageUpload';
 
-import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings, Ban, CheckCircle2, Trash2, Briefcase, Plus, Pencil, X, ChevronDown, MessageSquare, CreditCard, TrendingUp, DollarSign, Clock } from 'lucide-react';
+import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings, Ban, CheckCircle2, Trash2, Briefcase, Plus, Pencil, X, ChevronDown, MessageSquare, CreditCard, TrendingUp, DollarSign, Clock, Bot, Key, Send } from 'lucide-react';
 import ManageTestimonials from '../components/admin/ManageTestimonials';
 
 const API = 'http://localhost:5000/api';
@@ -21,16 +22,19 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
-  const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // Services form state
   const [showForm, setShowForm] = useState(false);
-  const [editingService, setEditingService] = useState(null); // null = create mode
+  const [editingService, setEditingService] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
-  const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
+
+  // Chatbot FAQ state
+  const [faqs, setFaqs] = useState([]);
+  const [faqsLoading, setFaqsLoading] = useState(false);
+  const [faqForm, setFaqForm] = useState({ keywords: '', answer: '' });
+  const [faqFormLoading, setFaqFormLoading] = useState(false);
 
   const adminInfo = JSON.parse(
     localStorage.getItem('adminInfo') || sessionStorage.getItem('adminInfo') || '{}'
@@ -49,7 +53,7 @@ const AdminDashboard = () => {
         setSubscriptionStats(statsRes.data.data);
       } catch (err) {
         console.error('Failed to fetch initial data', err);
-        setError('Failed to load data.');
+        toast.error('Failed to load data.');
         if (err.response?.status === 401) handleLogout();
       } finally {
         setLoading(false);
@@ -64,6 +68,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (activeTab === 'subscriptions') fetchSubscriptions();
+    if (activeTab === 'chatbot') fetchFaqs();
   }, [activeTab]);
 
   const fetchSubscriptions = async () => {
@@ -94,27 +99,95 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchFaqs = async () => {
+    setFaqsLoading(true);
+    try {
+      const res = await axios.get(`${API}/admin/chatbot/faqs`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      setFaqs(res.data.data);
+    } catch (err) {
+      console.error('Failed to fetch FAQs', err);
+    } finally {
+      setFaqsLoading(false);
+    }
+  };
+
+  const handleAddFaq = async (e) => {
+    e.preventDefault();
+    if (!faqForm.keywords.trim() || !faqForm.answer.trim()) {
+      toast.error('Both fields are required.');
+      return;
+    }
+    setFaqFormLoading(true);
+    try {
+      await axios.post(`${API}/admin/chatbot/faqs`, faqForm, { headers: { Authorization: `Bearer ${getToken()}` } });
+      setFaqForm({ keywords: '', answer: '' });
+      fetchFaqs();
+      toast.success('FAQ added successfully!');
+    } catch (err) {
+      toast.error('Failed to save FAQ.');
+    } finally {
+      setFaqFormLoading(false);
+    }
+  };
+
+  const handleDeleteFaq = (id) => {
+    toast((t) => (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium text-gray-900">
+          Delete this chatbot response?
+        </p>
+        <div className="flex justify-end gap-2 mt-1">
+          <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">Cancel</button>
+          <button onClick={async () => {
+            toast.dismiss(t.id);
+            try {
+              await axios.delete(`${API}/admin/chatbot/faqs/${id}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+              setFaqs(prev => prev.filter(f => f.id !== id));
+              toast.success('FAQ deleted successfully!');
+            } catch (err) {
+              toast.error('Failed to delete FAQ.');
+            }
+          }} className="px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">Delete</button>
+        </div>
+      </div>
+    ), { duration: Infinity });
+  };
+
   const handleToggleStatus = async (userId) => {
     try {
       const res = await axios.put(`${API}/admin/users/${userId}/status`, {}, {
         headers: { Authorization: `Bearer ${getToken()}` }
       });
       setUsers(users.map(u => u.id === userId ? { ...u, status: res.data.newStatus } : u));
+      toast.success('User status updated.');
     } catch (err) {
-      alert('Failed to update user status.');
+      toast.error('Failed to update user status.');
     }
   };
 
-  const handleDeleteUser = async (userId, userName) => {
-    if (!window.confirm(`Are you sure you want to delete ${userName}? This cannot be undone.`)) return;
-    try {
-      await axios.delete(`${API}/admin/users/${userId}`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-      });
-      setUsers(users.filter(u => u.id !== userId));
-    } catch (err) {
-      alert('Failed to delete user.');
-    }
+  const handleDeleteUser = (userId, userName) => {
+    toast((t) => (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium text-gray-900">
+          Are you sure you want to delete {userName}? This cannot be undone.
+        </p>
+        <div className="flex justify-end gap-2 mt-1">
+          <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">Cancel</button>
+          <button onClick={async () => {
+            toast.dismiss(t.id);
+            try {
+              await axios.delete(`${API}/admin/users/${userId}`, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+              });
+              setUsers(prev => prev.filter(u => u.id !== userId));
+              toast.success('User deleted successfully.');
+            } catch (err) {
+              toast.error('Failed to delete user.');
+            }
+          }} className="px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">Delete</button>
+        </div>
+      </div>
+    ), { duration: Infinity });
   };
 
   const handleLogout = () => {
@@ -127,14 +200,12 @@ const AdminDashboard = () => {
   const openCreateForm = () => {
     setEditingService(null);
     setFormData(emptyForm);
-    setFormError('');
     setShowForm(true);
   };
 
   const openEditForm = (service) => {
     setEditingService(service);
     setFormData({ title: service.title, description: service.description, label: service.label, icon: service.icon, image_url: service.image_url });
-    setFormError('');
     setShowForm(true);
   };
 
@@ -144,9 +215,8 @@ const AdminDashboard = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    setFormError('');
     if (!formData.title || !formData.description || !formData.label || !formData.icon || !formData.image_url) {
-      setFormError('All fields are required.');
+      toast.error('All fields are required.');
       return;
     }
     setFormLoading(true);
@@ -155,36 +225,46 @@ const AdminDashboard = () => {
         await axios.put(`${API}/admin/services/${editingService.id}`, formData, {
           headers: { Authorization: `Bearer ${getToken()}` }
         });
-        setSuccessMsg('Service updated successfully!');
+        toast.success('Service updated successfully!');
       } else {
         await axios.post(`${API}/admin/services`, formData, {
           headers: { Authorization: `Bearer ${getToken()}` }
         });
-        setSuccessMsg('Service created successfully!');
+        toast.success('Service created successfully!');
       }
       setShowForm(false);
       fetchServices();
-      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
       if (err.response?.status === 401) handleLogout();
-      setFormError(err.response?.data?.message || 'Failed to save service.');
+      toast.error(err.response?.data?.message || 'Failed to save service.');
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleDeleteService = async (serviceId, serviceTitle) => {
-    if (!window.confirm(`Delete "${serviceTitle}"? This cannot be undone.`)) return;
-    try {
-      await axios.delete(`${API}/admin/services/${serviceId}`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-      });
-      setServices(services.filter(s => s.id !== serviceId));
-      setSuccessMsg('Service deleted successfully!');
-      setTimeout(() => setSuccessMsg(''), 3000);
-    } catch (err) {
-      alert('Failed to delete service.');
-    }
+  const handleDeleteService = (serviceId, serviceTitle) => {
+    toast((t) => (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium text-gray-900">
+          Delete "{serviceTitle}"? This cannot be undone.
+        </p>
+        <div className="flex justify-end gap-2 mt-1">
+          <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">Cancel</button>
+          <button onClick={async () => {
+            toast.dismiss(t.id);
+            try {
+              await axios.delete(`${API}/admin/services/${serviceId}`, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+              });
+              setServices(prev => prev.filter(s => s.id !== serviceId));
+              toast.success('Service deleted successfully!');
+            } catch (err) {
+              toast.error('Failed to delete service.');
+            }
+          }} className="px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">Delete</button>
+        </div>
+      </div>
+    ), { duration: Infinity });
   };
 
   const stats = [
@@ -200,6 +280,7 @@ const AdminDashboard = () => {
     { key: 'services', icon: Briefcase, label: 'Services' },
     { key: 'subscriptions', icon: CreditCard, label: 'Subscriptions' },
     { key: 'testimonials', icon: MessageSquare, label: 'Testimonials' },
+    { key: 'chatbot', icon: Bot, label: 'Chatbot Training' },
     { key: 'analytics', icon: BarChart3, label: 'Analytics' },
     { key: 'settings', icon: Settings, label: 'Settings' },
   ];
@@ -260,6 +341,7 @@ const AdminDashboard = () => {
               : activeTab === 'users' ? 'User Management'
               : activeTab === 'services' ? 'Services Management'
               : activeTab === 'subscriptions' ? 'Subscription Management'
+              : activeTab === 'chatbot' ? 'Chatbot Training'
               : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
           </h1>
           <p className="text-gray-400 text-sm mt-1">
@@ -268,16 +350,10 @@ const AdminDashboard = () => {
               : activeTab === 'services' ? 'Add, edit, or remove corporate service cards shown on the public Services page.'
               : activeTab === 'subscriptions' ? 'Track all plan purchases, revenue, and subscriber details in real time.'
               : activeTab === 'testimonials' ? 'Manage customer stories and reviews.'
+              : activeTab === 'chatbot' ? 'Train the chatbot by adding keywords and custom responses.'
               : 'Configure your application preferences and settings.'}
           </p>
         </div>
-
-        {/* Success message */}
-        {successMsg && (
-          <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 font-semibold text-sm">
-            <CheckCircle2 className="w-4 h-4" /> {successMsg}
-          </div>
-        )}
 
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
@@ -309,8 +385,6 @@ const AdminDashboard = () => {
                   <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"></div>
                   Loading users...
                 </div>
-              ) : error ? (
-                <div className="p-8 text-center text-red-500 font-medium">{error}</div>
               ) : users.length === 0 ? (
                 <div className="p-8 text-center text-gray-500">
                   <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -392,10 +466,6 @@ const AdminDashboard = () => {
                     </button>
                   </div>
                   <form onSubmit={handleFormSubmit} className="px-6 py-5 space-y-4">
-                    {formError && (
-                      <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm font-medium">{formError}</div>
-                    )}
-
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">Service Title</label>
                       <input
@@ -664,6 +734,128 @@ const AdminDashboard = () => {
 
         {activeTab === 'testimonials' && (
           <ManageTestimonials />
+        )}
+
+        {/* Chatbot Training Tab */}
+        {activeTab === 'chatbot' && (
+          <div className="space-y-8">
+            {/* Add New Response Form */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#7154c1] flex items-center justify-center shadow">
+                  <Bot className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-[#1a1f2c]">Add New Bot Response</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Keywords are comma-separated (e.g. pricing, cost, price)</p>
+                </div>
+              </div>
+              <form onSubmit={handleAddFaq} className="px-6 py-5 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      <Key className="w-3.5 h-3.5 inline mr-1.5 text-indigo-500" />
+                      Trigger Keywords
+                    </label>
+                    <input
+                      type="text"
+                      value={faqForm.keywords}
+                      onChange={(e) => setFaqForm({ ...faqForm, keywords: e.target.value })}
+                      placeholder="e.g. refund, money back, guarantee"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      <Bot className="w-3.5 h-3.5 inline mr-1.5 text-indigo-500" />
+                      Bot Answer
+                    </label>
+                    <input
+                      type="text"
+                      value={faqForm.answer}
+                      onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
+                      placeholder="e.g. We offer a 30-day money-back guarantee!"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={faqFormLoading}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4" />
+                    {faqFormLoading ? 'Saving...' : 'Save Response'}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Trained Responses Table */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-[#1a1f2c]">Trained Responses</h2>
+                <span className="text-sm text-gray-400 font-medium">{faqs.length} responses</span>
+              </div>
+
+              {faqsLoading ? (
+                <div className="p-8 text-center text-gray-500">
+                  <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                  Loading responses...
+                </div>
+              ) : faqs.length === 0 ? (
+                <div className="p-12 text-center text-gray-500">
+                  <Bot className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                  <p className="font-medium text-gray-700">No responses trained yet.</p>
+                  <p className="text-sm mt-1 text-gray-400">Add your first keyword and answer above to get started.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50/50">
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">#</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Trigger Keywords</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Bot Response</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Created</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {faqs.map((faq, idx) => (
+                        <tr key={faq.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4 text-sm font-medium text-gray-400">{idx + 1}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-1.5">
+                              {faq.question_keywords.split(',').map((kw, i) => (
+                                <span key={i} className="inline-block bg-indigo-50 text-indigo-700 border border-indigo-100 text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                                  {kw.trim()}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-700 max-w-xs">{faq.answer}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {new Date(faq.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => handleDeleteFaq(faq.id)}
+                              className="inline-flex items-center justify-center p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete response"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

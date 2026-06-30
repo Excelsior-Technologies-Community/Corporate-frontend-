@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 import { Plus, Pencil, Trash2, X, MessageSquare, Star } from 'lucide-react';
 import ImageUpload from './ImageUpload';
 
@@ -13,9 +14,7 @@ export default function ManageTestimonials() {
   const [showForm, setShowForm] = useState(false);
   const [editingTestimonial, setEditingTestimonial] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
-  const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
 
   const getToken = () => localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
 
@@ -45,7 +44,6 @@ export default function ManageTestimonials() {
   const openCreateForm = () => {
     setEditingTestimonial(null);
     setFormData(emptyForm);
-    setFormError('');
     setShowForm(true);
   };
 
@@ -60,7 +58,6 @@ export default function ManageTestimonials() {
       date: item.date,
       status: item.status
     });
-    setFormError('');
     setShowForm(true);
   };
 
@@ -70,9 +67,8 @@ export default function ManageTestimonials() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    setFormError('');
     if (!formData.name || !formData.role || !formData.content || !formData.avatar_url || !formData.date) {
-      setFormError('All fields are required.');
+      toast.error('All fields are required.');
       return;
     }
     setFormLoading(true);
@@ -81,35 +77,45 @@ export default function ManageTestimonials() {
         await axios.put(`${API}/admin/testimonials/${editingTestimonial.id}`, formData, {
           headers: { Authorization: `Bearer ${getToken()}` }
         });
-        setSuccessMsg('Testimonial updated successfully!');
+        toast.success('Testimonial updated successfully!');
       } else {
         await axios.post(`${API}/admin/testimonials`, formData, {
           headers: { Authorization: `Bearer ${getToken()}` }
         });
-        setSuccessMsg('Testimonial created successfully!');
+        toast.success('Testimonial created successfully!');
       }
       setShowForm(false);
       fetchTestimonials();
-      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to save testimonial.');
+      toast.error(err.response?.data?.message || 'Failed to save testimonial.');
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Delete testimonial from "${name}"? This cannot be undone.`)) return;
-    try {
-      await axios.delete(`${API}/admin/testimonials/${id}`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-      });
-      setTestimonials(testimonials.filter(t => t.id !== id));
-      setSuccessMsg('Testimonial deleted successfully!');
-      setTimeout(() => setSuccessMsg(''), 3000);
-    } catch (err) {
-      alert('Failed to delete testimonial.');
-    }
+  const handleDelete = (id, name) => {
+    toast((t) => (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium text-gray-900">
+          Delete testimonial from "{name}"? This cannot be undone.
+        </p>
+        <div className="flex justify-end gap-2 mt-1">
+          <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">Cancel</button>
+          <button onClick={async () => {
+            toast.dismiss(t.id);
+            try {
+              await axios.delete(`${API}/admin/testimonials/${id}`, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+              });
+              setTestimonials(prev => prev.filter(t => t.id !== id));
+              toast.success('Testimonial deleted successfully!');
+            } catch (err) {
+              toast.error('Failed to delete testimonial.');
+            }
+          }} className="px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">Delete</button>
+        </div>
+      </div>
+    ), { duration: Infinity });
   };
 
   if (loading) {
@@ -131,12 +137,6 @@ export default function ManageTestimonials() {
         </button>
       </div>
 
-      {successMsg && (
-        <div className="bg-green-50 text-green-700 p-4 rounded-xl text-sm font-medium border border-green-100 flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500"></div> {successMsg}
-        </div>
-      )}
-
       {showForm ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
@@ -150,12 +150,6 @@ export default function ManageTestimonials() {
           </div>
           
           <form onSubmit={handleFormSubmit} className="p-6">
-            {formError && (
-              <div className="mb-6 bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium border border-red-100">
-                {formError}
-              </div>
-            )}
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Customer Name</label>

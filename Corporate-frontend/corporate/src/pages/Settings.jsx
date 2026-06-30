@@ -5,6 +5,7 @@ import {
   ArrowLeft, User, Lock, CheckCircle2, AlertCircle,
   Eye, EyeOff, LogOut, Save
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const API = 'http://localhost:5000/api/users';
 
@@ -17,8 +18,6 @@ const Settings = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
-  const [profileSuccess, setProfileSuccess] = useState('');
-  const [profileError, setProfileError] = useState('');
 
   // Password form
   const [currentPassword, setCurrentPassword] = useState('');
@@ -28,8 +27,6 @@ const Settings = () => {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordSuccess, setPasswordSuccess] = useState('');
-  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     const info = localStorage.getItem('userInfo') || sessionStorage.getItem('userInfo');
@@ -48,10 +45,8 @@ const Settings = () => {
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
-    setProfileError('');
-    setProfileSuccess('');
     if (!name.trim() || !email.trim()) {
-      setProfileError('Name and email are required.');
+      toast.error('Name and email are required.');
       return;
     }
     setProfileLoading(true);
@@ -70,10 +65,9 @@ const Settings = () => {
       window.dispatchEvent(new Event('authChange'));
 
       setUserInfo(user);
-      setProfileSuccess('Profile updated successfully!');
-      setTimeout(() => setProfileSuccess(''), 4000);
+      toast.success('Profile updated successfully!');
     } catch (err) {
-      setProfileError(err.response?.data?.message || 'Failed to update profile.');
+      toast.error(err.response?.data?.message || 'Failed to update profile.');
     } finally {
       setProfileLoading(false);
     }
@@ -81,18 +75,16 @@ const Settings = () => {
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    setPasswordError('');
-    setPasswordSuccess('');
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError('All fields are required.');
+      toast.error('All fields are required.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match.');
+      toast.error('New passwords do not match.');
       return;
     }
     if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters.');
+      toast.error('New password must be at least 6 characters.');
       return;
     }
     setPasswordLoading(true);
@@ -100,13 +92,12 @@ const Settings = () => {
       await axios.put(`${API}/change-password`, { currentPassword, newPassword }, {
         headers: { Authorization: `Bearer ${getToken()}` }
       });
-      setPasswordSuccess('Password changed successfully!');
+      toast.success('Password changed successfully!');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setTimeout(() => setPasswordSuccess(''), 4000);
     } catch (err) {
-      setPasswordError(err.response?.data?.message || 'Failed to change password.');
+      toast.error(err.response?.data?.message || 'Failed to change password.');
     } finally {
       setPasswordLoading(false);
     }
@@ -200,17 +191,6 @@ const Settings = () => {
                 <p className="text-sm text-gray-500 mt-1">Update your name and email address.</p>
               </div>
 
-              {profileSuccess && (
-                <div className="flex items-center gap-3 mb-6 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-sm font-semibold">
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> {profileSuccess}
-                </div>
-              )}
-              {profileError && (
-                <div className="flex items-center gap-3 mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-semibold">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" /> {profileError}
-                </div>
-              )}
-
               <form onSubmit={handleProfileSave} className="space-y-6 max-w-lg">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
@@ -263,17 +243,6 @@ const Settings = () => {
                 <h2 className="text-lg font-bold text-[#1a1f2c]">Change Password</h2>
                 <p className="text-sm text-gray-500 mt-1">Update your password to keep your account secure.</p>
               </div>
-
-              {passwordSuccess && (
-                <div className="flex items-center gap-3 mb-6 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-sm font-semibold">
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> {passwordSuccess}
-                </div>
-              )}
-              {passwordError && (
-                <div className="flex items-center gap-3 mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-semibold">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" /> {passwordError}
-                </div>
-              )}
 
               <form onSubmit={handlePasswordChange} className="space-y-6 max-w-lg">
                 {/* Current Password */}

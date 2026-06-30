@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 import { UploadCloud, X, Loader2, Image as ImageIcon } from 'lucide-react';
 
 export default function ImageUpload({ value, onChange, label = "Image Upload" }) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
   const getToken = () => localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
@@ -15,17 +15,16 @@ export default function ImageUpload({ value, onChange, label = "Image Upload" })
     
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file (JPEG, PNG, etc).');
+      toast.error('Please upload an image file (JPEG, PNG, etc).');
       return;
     }
 
     // Validate size (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setError('File size exceeds 5MB limit.');
+      toast.error('File size exceeds 5MB limit.');
       return;
     }
 
-    setError('');
     setUploading(true);
 
     const formData = new FormData();
@@ -44,7 +43,7 @@ export default function ImageUpload({ value, onChange, label = "Image Upload" })
       }
     } catch (err) {
       console.error('Upload failed:', err);
-      setError(err.response?.data?.message || 'Failed to upload image.');
+      toast.error(err.response?.data?.message || 'Failed to upload image.');
     } finally {
       setUploading(false);
     }
@@ -110,7 +109,6 @@ export default function ImageUpload({ value, onChange, label = "Image Upload" })
           onClick={() => !uploading && fileInputRef.current?.click()}
           className={`relative h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors
             ${isDragging ? 'border-[#4f46e5] bg-indigo-50/50' : 'border-gray-300 hover:border-[#4f46e5] hover:bg-gray-50/50'}
-            ${error ? 'border-red-300 bg-red-50/30' : ''}
           `}
         >
           <input
@@ -136,10 +134,6 @@ export default function ImageUpload({ value, onChange, label = "Image Upload" })
             </div>
           )}
         </div>
-      )}
-      
-      {error && (
-        <p className="mt-1.5 text-sm text-red-500 font-medium">{error}</p>
       )}
     </div>
   );

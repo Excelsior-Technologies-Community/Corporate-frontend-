@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, EyeOff, Lock, Mail, Shield, AlertCircle, CheckCircle } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { Eye, EyeOff, Lock, Mail, Shield } from 'lucide-react';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -9,8 +10,6 @@ const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   // Pre-fill saved email if remembered
   useEffect(() => {
@@ -24,14 +23,11 @@ const AdminLogin = () => {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setSuccess('');
 
     try {
       const res = await axios.post('http://localhost:5000/api/admin/login', formData);
@@ -49,12 +45,12 @@ const AdminLogin = () => {
         localStorage.removeItem('rememberMe');
       }
 
-      setSuccess(`Welcome back, ${admin.name}! Redirecting to dashboard...`);
+      toast.success(`Welcome back, ${admin.name}! Redirecting to dashboard...`);
       setTimeout(() => {
         navigate('/admin/dashboard');
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong. Please try again.');
+      toast.error(err.response?.data?.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -86,22 +82,6 @@ const AdminLogin = () => {
 
         {/* Login form card */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-
-          {/* Error message */}
-          {error && (
-            <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 text-red-300 text-sm rounded-xl px-4 py-3 mb-6">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Success message */}
-          {success && (
-            <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/30 text-green-300 text-sm rounded-xl px-4 py-3 mb-6">
-              <CheckCircle className="w-5 h-5 flex-shrink-0" />
-              <span>{success}</span>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
 

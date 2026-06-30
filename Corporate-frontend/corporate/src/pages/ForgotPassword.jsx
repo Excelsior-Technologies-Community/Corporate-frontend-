@@ -1,27 +1,24 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setMessage('');
 
     try {
       const res = await axios.post('http://localhost:5000/api/users/forgot-password', { email });
-      setMessage(res.data.message);
+      toast.success(res.data.message);
       setIsSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong. Please try again.');
+      toast.error(err.response?.data?.message || 'Something went wrong. Please try again.');
       setIsSuccess(false);
     } finally {
       setLoading(false);
@@ -45,20 +42,6 @@ const ForgotPassword = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-white py-8 px-4 shadow-xl shadow-gray-200/50 sm:rounded-3xl sm:px-10 border border-gray-100">
           
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-center gap-3 text-sm">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
-
-          {message && (
-            <div className={`mb-6 ${isSuccess ? 'bg-green-50 border-green-200 text-green-600' : 'bg-blue-50 border-blue-200 text-blue-600'} border px-4 py-3 rounded-xl flex items-center gap-3 text-sm`}>
-               {isSuccess ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <Mail className="w-5 h-5 flex-shrink-0" />}
-              <p>{message}</p>
-            </div>
-          )}
-
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">

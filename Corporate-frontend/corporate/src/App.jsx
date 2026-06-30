@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
+import { Toaster, toast } from 'react-hot-toast';
 import Home from './pages/Home';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
@@ -13,6 +14,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Testimonials from './pages/Testimonials';
 import Pricing from './pages/Pricing';
+import Chatbot from './components/Chatbot';
 
 // Global Axios Interceptor for handling auto-logout on suspension
 axios.interceptors.response.use(
@@ -28,7 +30,7 @@ axios.interceptors.response.use(
       // Dispatch event to update UI immediately
       window.dispatchEvent(new Event('authChange'));
       
-      alert('Your account has been suspended by the administrator.');
+      toast.error('Your account has been suspended by the administrator.');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -52,6 +54,7 @@ const UserProtectedRoute = ({ children }) => {
 export default function App() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
@@ -95,6 +98,7 @@ export default function App() {
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Chatbot />
     </BrowserRouter>
   );
 }

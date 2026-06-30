@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Settings, Activity, Folder, Plus, ArrowRight, Clock, Star, ArrowLeft, LogOut } from 'lucide-react';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ const UserDashboard = () => {
         setDashboardData(res.data.data);
       }
     } catch (err) {
+      toast.error('Failed to fetch dashboard data');
       console.error('Failed to fetch dashboard data:', err);
     } finally {
       setLoading(false);
@@ -57,8 +59,10 @@ const UserDashboard = () => {
       );
       setIsProjectModalOpen(false);
       setNewProjectName('');
+      toast.success('Project created successfully!');
       fetchDashboard(); // refresh data
     } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create project');
       console.error('Failed to create project:', err);
     } finally {
       setIsCreatingProject(false);

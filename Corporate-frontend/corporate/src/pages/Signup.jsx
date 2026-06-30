@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
 
 const Signup = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     // If already logged in, redirect to home
@@ -20,14 +19,11 @@ const Signup = () => {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setSuccess('');
 
     try {
       const res = await axios.post('http://localhost:5000/api/users/signup', formData);
@@ -37,7 +33,7 @@ const Signup = () => {
       localStorage.setItem('userToken', token);
       localStorage.setItem('userInfo', JSON.stringify(user));
 
-      setSuccess(`Account created! Welcome, ${user.name}!`);
+      toast.success(`Account created! Welcome, ${user.name}!`);
       
       // Dispatch custom event to update Navbar immediately
       window.dispatchEvent(new Event('authChange'));
@@ -46,7 +42,7 @@ const Signup = () => {
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong. Please try again.');
+      toast.error(err.response?.data?.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -73,20 +69,6 @@ const Signup = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-white py-8 px-4 shadow-xl shadow-gray-200/50 sm:rounded-3xl sm:px-10 border border-gray-100">
           
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-center gap-3 text-sm">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
-
-          {success && (
-            <div className="mb-6 bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-xl flex items-center gap-3 text-sm">
-              <CheckCircle className="w-5 h-5 flex-shrink-0" />
-              <p>{success}</p>
-            </div>
-          )}
-
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
