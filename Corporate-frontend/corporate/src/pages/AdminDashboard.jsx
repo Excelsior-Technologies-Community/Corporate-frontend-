@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import ImageUpload from '../components/admin/ImageUpload';
 
 import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings, Ban, CheckCircle2, Trash2, Briefcase, Plus, Pencil, X, ChevronDown, MessageSquare, CreditCard, TrendingUp, DollarSign, Clock, Bot, Key, Send } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import ManageTestimonials from '../components/admin/ManageTestimonials';
 
 const API = 'http://localhost:5000/api';
@@ -67,7 +68,7 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'subscriptions') fetchSubscriptions();
+    if (activeTab === 'subscriptions' || activeTab === 'analytics') fetchSubscriptions();
     if (activeTab === 'chatbot') fetchFaqs();
   }, [activeTab]);
 
@@ -284,6 +285,44 @@ const AdminDashboard = () => {
     { key: 'analytics', icon: BarChart3, label: 'Analytics' },
     { key: 'settings', icon: Settings, label: 'Settings' },
   ];
+
+  // Analytics Data Aggregation
+  const getRevenueByPlanData = () => {
+    if (!subscriptions || subscriptions.length === 0) return [];
+    const revenueMap = {};
+    subscriptions.forEach(sub => {
+      const plan = sub.plan_name || 'Unknown';
+      if (sub.status === 'active') {
+        revenueMap[plan] = (revenueMap[plan] || 0) + Number(sub.price || 0);
+      }
+    });
+    return Object.keys(revenueMap).map(key => ({ name: key, revenue: revenueMap[key] }));
+  };
+
+  const getUserGrowthData = () => {
+    if (!users || users.length === 0) return [];
+    const growthMap = {};
+    users.forEach(user => {
+      const date = new Date(user.created_at);
+      const monthYear = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+      growthMap[monthYear] = (growthMap[monthYear] || 0) + 1;
+    });
+    return Object.keys(growthMap).map(key => ({ month: key, users: growthMap[key] }));
+  };
+
+  const getUserStatusData = () => {
+    if (!users || users.length === 0) return [];
+    let active = 0;
+    let suspended = 0;
+    users.forEach(user => {
+      if (user.status === 'active') active++;
+      else suspended++;
+    });
+    return [
+      { name: 'Active', value: active, color: '#10b981' },
+      { name: 'Suspended', value: suspended, color: '#ef4444' }
+    ];
+  };
 
   return (
     <div className="min-h-screen bg-[#f5f6fa] font-sans">
@@ -854,6 +893,107 @@ const AdminDashboard = () => {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Analytics Tab */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm font-medium">Total Users</p>
+                  <p className="text-3xl font-bold text-[#1a1f2c] mt-1">{users.length}</p>
+                </div>
+                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                  <Users className="w-6 h-6" />
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm font-medium">Active Subscriptions</p>
+                  <p className="text-3xl font-bold text-[#1a1f2c] mt-1">{subscriptionStats?.active || 0}</p>
+                </div>
+                <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm font-medium">Monthly Revenue</p>
+                  <p className="text-3xl font-bold text-[#1a1f2c] mt-1">${Number(subscriptionStats?.totalRevenue || 0).toFixed(0)}</p>
+                </div>
+                <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600">
+                  <DollarSign className="w-6 h-6" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h3 className="text-lg font-bold text-[#1a1f2c] mb-6">User Growth</h3>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={getUserGrowthData()}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        cursor={{ stroke: '#f3f4f6', strokeWidth: 2 }}
+                      />
+                      <Line type="monotone" dataKey="users" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4, fill: '#4f46e5', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h3 className="text-lg font-bold text-[#1a1f2c] mb-6">Revenue by Plan</h3>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={getRevenueByPlanData()}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(val) => `$${val}`} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        cursor={{ fill: '#f9fafb' }}
+                        formatter={(value) => [`$${value}`, 'Revenue']}
+                      />
+                      <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h3 className="text-lg font-bold text-[#1a1f2c] mb-6">User Status Distribution</h3>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={getUserStatusData()}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {getUserStatusData().map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
           </div>
         )}
