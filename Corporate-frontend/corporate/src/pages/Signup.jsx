@@ -3,18 +3,45 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
+import { io } from 'socket.io-client';
 
 const Signup = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [signupsDisabled, setSignupsDisabled] = useState(false);
 
   useEffect(() => {
     // If already logged in, redirect to home
     if (localStorage.getItem('userToken') || sessionStorage.getItem('userToken')) {
       navigate('/');
     }
+
+    // Fetch settings from API
+    const fetchSettings = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/admin/settings');
+        if (res.data.status === 'success' && res.data.data) {
+          if (res.data.data.disableSignups) {
+            setSignupsDisabled(true);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch settings', e);
+      }
+    };
+    fetchSettings();
+
+    // Listen for real-time setting updates from Admin
+    const socket = io('http://localhost:5000');
+    socket.on('settingsUpdated', (fetchedSettings) => {
+      setSignupsDisabled(fetchedSettings.disableSignups === 'true' || fetchedSettings.disableSignups === true);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, [navigate]);
 
   const handleChange = (e) => {
@@ -47,6 +74,24 @@ const Signup = () => {
       setLoading(false);
     }
   };
+
+  if (signupsDisabled) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-rose-400/20 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-400/20 blur-3xl pointer-events-none" />
+        
+        <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 bg-white py-12 px-4 shadow-xl sm:rounded-2xl sm:px-10 text-center border border-gray-100">
+          <Lock className="w-16 h-16 text-indigo-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Registrations Locked</h2>
+          <p className="text-gray-500 mb-8">New account signups are temporarily disabled by the administrator. Please check back later.</p>
+          <Link to="/" className="inline-flex justify-center items-center px-6 py-2.5 border border-transparent text-sm font-semibold rounded-xl text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors">
+            Return to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">

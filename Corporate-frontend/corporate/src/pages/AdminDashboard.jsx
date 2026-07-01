@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { io } from 'socket.io-client';
 import ImageUpload from '../components/admin/ImageUpload';
 
-import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings, Ban, CheckCircle2, Trash2, Briefcase, Plus, Pencil, X, ChevronDown, MessageSquare, CreditCard, TrendingUp, DollarSign, Clock, Bot, Key, Send } from 'lucide-react';
+import { Shield, LayoutDashboard, LogOut, Users, BarChart3, Settings as SettingsIcon, Ban, CheckCircle2, Trash2, Briefcase, Plus, Pencil, X, ChevronDown, MessageSquare, CreditCard, TrendingUp, DollarSign, Clock, Bot, Key, Send, Lock, Bell, Globe, Save, Info, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import ManageTestimonials from '../components/admin/ManageTestimonials';
 
@@ -13,6 +14,36 @@ const API = 'http://localhost:5000/api';
 const ICON_OPTIONS = ['Target', 'Coins', 'BarChart3', 'Briefcase', 'Globe', 'Lightbulb', 'TrendingUp', 'Users', 'Award', 'Search'];
 
 const emptyForm = { title: '', description: '', label: '', icon: 'Target', image_url: '' };
+
+const Pagination = ({ currentPage, totalItems, itemsPerPage, onPageChange }) => {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+      <p className="text-sm text-gray-500">
+        Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+        <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of{' '}
+        <span className="font-medium">{totalItems}</span> results
+      </p>
+      <div className="flex gap-2">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1 text-sm bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
+        >
+          Previous
+        </button>
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 text-sm bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -25,6 +56,12 @@ const AdminDashboard = () => {
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  // Pagination states
+  const [usersPage, setUsersPage] = useState(1);
+  const [servicesPage, setServicesPage] = useState(1);
+  const [subscriptionsPage, setSubscriptionsPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
   // Services form state
   const [showForm, setShowForm] = useState(false);
   const [editingService, setEditingService] = useState(null);
@@ -33,9 +70,27 @@ const AdminDashboard = () => {
 
   // Chatbot FAQ state
   const [faqs, setFaqs] = useState([]);
-  const [faqsLoading, setFaqsLoading] = useState(false);
+  const [faqsLoading, setFaqsLoading] = useState(true);
+  
+  // Settings State
+  const [adminSettings, setAdminSettings] = useState({
+    maintenanceMode: false,
+    disableSignups: false,
+    disableChatbot: false,
+    emailNotifications: true,
+    newSubscriptionAlerts: true,
+    currency: 'USD',
+    theme: 'light',
+    siteTitle: 'Corporate Panel',
+    supportEmail: 'support@corporate.com',
+    maintenanceMessage: 'We are currently performing scheduled maintenance to improve our services. The dashboard will be back online shortly. Thank you for your patience!'
+  });
+
   const [faqForm, setFaqForm] = useState({ keywords: '', answer: '' });
   const [faqFormLoading, setFaqFormLoading] = useState(false);
+
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const adminInfo = JSON.parse(
     localStorage.getItem('adminInfo') || sessionStorage.getItem('adminInfo') || '{}'
@@ -71,6 +126,86 @@ const AdminDashboard = () => {
     if (activeTab === 'subscriptions' || activeTab === 'analytics') fetchSubscriptions();
     if (activeTab === 'chatbot') fetchFaqs();
   }, [activeTab]);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await axios.get(`${API}/admin/settings`);
+        if (res.data.status === 'success' && res.data.data) {
+          const fetchedSettings = { ...adminSettings, ...res.data.data };
+          // Cast string booleans back to booleans
+          Object.keys(fetchedSettings).forEach(key => {
+            if (fetchedSettings[key] === 'true') fetchedSettings[key] = true;
+            if (fetchedSettings[key] === 'false') fetchedSettings[key] = false;
+          });
+          setAdminSettings(fetchedSettings);
+          // Also sync to localStorage for the locked pages (Signup, UserDashboard) which might load before API responds
+          localStorage.setItem('adminSettings', JSON.stringify(fetchedSettings));
+        }
+      } catch (e) {
+        console.error('Failed to fetch settings from API', e);
+      }
+    };
+    fetchSettings();
+
+    const fetchNotifications = async () => {
+      try {
+        const res = await axios.get(`${API}/admin/notifications`, { headers: { Authorization: `Bearer ${getToken()}` } });
+        if (res.data.status === 'success') {
+          setNotifications(res.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch notifications', err);
+      }
+    };
+    fetchNotifications();
+
+    const socket = io('http://localhost:5000');
+    socket.on('newAdminNotification', (notif) => {
+      setNotifications(prev => [notif, ...prev]);
+      toast.success(notif.message, { icon: '🔔' });
+    });
+
+    return () => socket.disconnect();
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const handleMarkAllRead = async () => {
+    try {
+      await axios.put(`${API}/admin/notifications/read-all`, {}, { headers: { Authorization: `Bearer ${getToken()}` } });
+      setNotifications(notifications.map(n => ({ ...n, is_read: 1 })));
+      setShowNotifications(false);
+    } catch (err) {
+      console.error('Failed to mark notifications as read', err);
+    }
+  };
+
+  const handleClearAll = async () => {
+    try {
+      await axios.delete(`${API}/admin/notifications`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      setNotifications([]);
+      setShowNotifications(false);
+      toast.success('All notifications cleared');
+    } catch (err) {
+      console.error('Failed to clear notifications', err);
+      toast.error('Failed to clear notifications');
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      await axios.put(`${API}/admin/settings`, adminSettings, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
+      // Keep localStorage in sync for instant page locks
+      localStorage.setItem('adminSettings', JSON.stringify(adminSettings));
+      toast.success('Admin settings saved successfully!');
+    } catch (e) {
+      console.error('Failed to save settings to API', e);
+      toast.error('Failed to save settings.');
+    }
+  };
 
   const fetchSubscriptions = async () => {
     setSubscriptionsLoading(true);
@@ -283,7 +418,7 @@ const AdminDashboard = () => {
     { key: 'testimonials', icon: MessageSquare, label: 'Testimonials' },
     { key: 'chatbot', icon: Bot, label: 'Chatbot Training' },
     { key: 'analytics', icon: BarChart3, label: 'Analytics' },
-    { key: 'settings', icon: Settings, label: 'Settings' },
+    { key: 'settings', icon: SettingsIcon, label: 'Settings' },
   ];
 
   // Analytics Data Aggregation
@@ -324,8 +459,24 @@ const AdminDashboard = () => {
     ];
   };
 
+  const Toggle = ({ label, description, checked, onChange }) => (
+    <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0">
+      <div>
+        <p className="text-sm font-semibold text-gray-800">{label}</p>
+        {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
+      </div>
+      <button
+        type="button"
+        onClick={onChange}
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${checked ? 'bg-indigo-600' : 'bg-gray-200'}`}
+      >
+        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+      </button>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-[#f5f6fa] font-sans">
+    <div className={`min-h-screen bg-[#f5f6fa] font-sans ${adminSettings?.theme === 'dark' ? 'dark-admin' : ''}`}>
       {/* Sidebar */}
       <div className="fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-[#0f0c29] via-[#302b63] to-[#24243e] text-white flex flex-col z-50 shadow-2xl">
         <div className="flex items-center gap-3 px-6 py-7 border-b border-white/10">
@@ -373,25 +524,79 @@ const AdminDashboard = () => {
       </div>
 
       {/* Main content */}
-      <div className="ml-64 p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-extrabold text-[#1a1f2c] tracking-tight">
-            {activeTab === 'dashboard' ? 'Dashboard Overview'
-              : activeTab === 'users' ? 'User Management'
-              : activeTab === 'services' ? 'Services Management'
-              : activeTab === 'subscriptions' ? 'Subscription Management'
-              : activeTab === 'chatbot' ? 'Chatbot Training'
-              : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-          </h1>
-          <p className="text-gray-400 text-sm mt-1">
-            {activeTab === 'dashboard' ? `Welcome back, ${adminInfo.name || 'Admin'}! Here's what's happening.`
-              : activeTab === 'users' ? 'View and manage all registered accounts on the platform.'
-              : activeTab === 'services' ? 'Add, edit, or remove corporate service cards shown on the public Services page.'
-              : activeTab === 'subscriptions' ? 'Track all plan purchases, revenue, and subscriber details in real time.'
-              : activeTab === 'testimonials' ? 'Manage customer stories and reviews.'
-              : activeTab === 'chatbot' ? 'Train the chatbot by adding keywords and custom responses.'
-              : 'Configure your application preferences and settings.'}
-          </p>
+      <div className="ml-64 p-8 relative">
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className="text-2xl font-extrabold text-[#1a1f2c] tracking-tight">
+              {activeTab === 'dashboard' ? 'Dashboard Overview'
+                : activeTab === 'users' ? 'User Management'
+                : activeTab === 'services' ? 'Services Management'
+                : activeTab === 'subscriptions' ? 'Subscription Management'
+                : activeTab === 'chatbot' ? 'Chatbot Training'
+                : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+            </h1>
+            <p className="text-gray-400 text-sm mt-1">
+              {activeTab === 'dashboard' ? `Welcome back, ${adminInfo.name || 'Admin'}! Here's what's happening.`
+                : activeTab === 'users' ? 'View and manage all registered accounts on the platform.'
+                : activeTab === 'services' ? 'Add, edit, or remove corporate service cards shown on the public Services page.'
+                : activeTab === 'subscriptions' ? 'Track all plan purchases, revenue, and subscriber details in real time.'
+                : activeTab === 'testimonials' ? 'Manage customer stories and reviews.'
+                : activeTab === 'chatbot' ? 'Train the chatbot by adding keywords and custom responses.'
+                : 'Configure your application preferences and settings.'}
+            </p>
+          </div>
+
+          {/* Real-time Notification Bell */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2.5 bg-white rounded-full text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors border border-gray-200 shadow-sm"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 transform translate-x-1 -translate-y-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                  <h3 className="font-semibold text-gray-800 text-sm">Notifications</h3>
+                  <div className="flex items-center gap-3">
+                    {unreadCount > 0 && (
+                      <button onClick={handleMarkAllRead} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
+                        Mark all read
+                      </button>
+                    )}
+                    {notifications.length > 0 && (
+                      <button onClick={handleClearAll} className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="max-h-[320px] overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-gray-500 text-sm">No new notifications</div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div key={notif.id} className={`p-4 border-b border-gray-50 flex items-start gap-3 transition-colors ${!notif.is_read ? 'bg-indigo-50/30' : 'hover:bg-gray-50'}`}>
+                        <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${!notif.is_read ? 'bg-indigo-600' : 'bg-gray-300'}`}></div>
+                        <div>
+                          <p className={`text-sm ${!notif.is_read ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>{notif.message}</p>
+                          <span className="text-[10px] text-gray-400 mt-1 block">
+                            {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(notif.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Dashboard Tab */}
@@ -441,7 +646,7 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {users.map((user) => (
+                    {users.slice((usersPage - 1) * ITEMS_PER_PAGE, usersPage * ITEMS_PER_PAGE).map((user) => (
                       <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -484,6 +689,14 @@ const AdminDashboard = () => {
                     ))}
                   </tbody>
                 </table>
+              )}
+              {users.length > ITEMS_PER_PAGE && (
+                <Pagination
+                  currentPage={usersPage}
+                  totalItems={users.length}
+                  itemsPerPage={ITEMS_PER_PAGE}
+                  onPageChange={setUsersPage}
+                />
               )}
             </div>
           </div>
@@ -609,7 +822,7 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {services.map((service, idx) => (
+                      {services.slice((servicesPage - 1) * ITEMS_PER_PAGE, servicesPage * ITEMS_PER_PAGE).map((service, idx) => (
                         <tr key={service.id} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-6 py-4 text-sm font-medium text-gray-400">{idx + 1}</td>
                           <td className="px-6 py-4">
@@ -649,6 +862,14 @@ const AdminDashboard = () => {
                       ))}
                     </tbody>
                   </table>
+                  {services.length > ITEMS_PER_PAGE && (
+                    <Pagination
+                      currentPage={servicesPage}
+                      totalItems={services.length}
+                      itemsPerPage={ITEMS_PER_PAGE}
+                      onPageChange={setServicesPage}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -724,7 +945,7 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {subscriptions.map((sub, idx) => (
+                      {subscriptions.slice((subscriptionsPage - 1) * ITEMS_PER_PAGE, subscriptionsPage * ITEMS_PER_PAGE).map((sub, idx) => (
                         <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-6 py-4 text-sm font-medium text-gray-400">{idx + 1}</td>
                           <td className="px-6 py-4">
@@ -765,6 +986,14 @@ const AdminDashboard = () => {
                       ))}
                     </tbody>
                   </table>
+                )}
+                {subscriptions.length > ITEMS_PER_PAGE && (
+                  <Pagination
+                    currentPage={subscriptionsPage}
+                    totalItems={subscriptions.length}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    onPageChange={setSubscriptionsPage}
+                  />
                 )}
               </div>
             </div>
@@ -993,6 +1222,203 @@ const AdminDashboard = () => {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto pb-12">
+            {/* Header */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1a1f2c] tracking-tight">Application Settings</h2>
+                <p className="text-sm text-gray-500 mt-1">Manage site access, metadata, notifications, and application preferences.</p>
+              </div>
+              <button
+                onClick={handleSaveSettings}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-all shadow-[0_4px_12px_rgba(79,70,229,0.25)] hover:shadow-[0_6px_16px_rgba(79,70,229,0.3)] active:scale-[0.98]"
+              >
+                <Save className="w-4 h-4" />
+                Save Changes
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Left Column */}
+              <div className="space-y-6">
+                {/* Site Identity & SEO */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group hover:border-indigo-100 transition-colors">
+                  <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-4 bg-gray-50/50">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600">
+                      <Globe className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[#1a1f2c]">Site Identity</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Basic information about your application.</p>
+                    </div>
+                  </div>
+                  <div className="p-6 space-y-5">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Site Title</label>
+                      <input
+                        type="text"
+                        value={adminSettings.siteTitle}
+                        onChange={(e) => setAdminSettings({ ...adminSettings, siteTitle: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all shadow-sm"
+                        placeholder="e.g. Corporate Panel"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Support Email</label>
+                      <input
+                        type="email"
+                        value={adminSettings.supportEmail}
+                        onChange={(e) => setAdminSettings({ ...adminSettings, supportEmail: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all shadow-sm"
+                        placeholder="e.g. support@corporate.com"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Application Preferences */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group hover:border-indigo-100 transition-colors">
+                  <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-4 bg-gray-50/50">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+                      <SettingsIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[#1a1f2c]">Preferences</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Global formatting and theme options.</p>
+                    </div>
+                  </div>
+                  <div className="p-6 space-y-5">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Default Currency</label>
+                      <div className="relative">
+                        <select
+                          value={adminSettings.currency}
+                          onChange={(e) => setAdminSettings({ ...adminSettings, currency: e.target.value })}
+                          className="w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all shadow-sm appearance-none"
+                        >
+                          <option value="USD">USD ($)</option>
+                          <option value="EUR">EUR (€)</option>
+                          <option value="GBP">GBP (£)</option>
+                          <option value="INR">INR (₹)</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Admin Dashboard Theme</label>
+                      <div className="flex bg-gray-100/80 p-1 rounded-xl w-full border border-gray-200/50 shadow-inner">
+                        <button
+                          type="button"
+                          onClick={() => setAdminSettings({ ...adminSettings, theme: 'light' })}
+                          className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-lg transition-all ${adminSettings.theme === 'light' ? 'bg-white text-gray-900 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                          Light
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAdminSettings({ ...adminSettings, theme: 'dark' })}
+                          className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-lg transition-all ${adminSettings.theme === 'dark' ? 'bg-white text-gray-900 shadow-sm border border-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                          Dark
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                {/* Site Controls / Locks */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group hover:border-red-100 transition-colors">
+                  <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-4 bg-gray-50/50">
+                    <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-600">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[#1a1f2c]">Access Controls</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Restrict access to specific features.</p>
+                    </div>
+                  </div>
+                  <div className="px-6 py-2">
+                    <Toggle
+                      label="Maintenance Mode"
+                      description="Lock the entire public website. Users will see a maintenance message."
+                      checked={adminSettings.maintenanceMode}
+                      onChange={() => setAdminSettings({ ...adminSettings, maintenanceMode: !adminSettings.maintenanceMode })}
+                    />
+                    <Toggle
+                      label="Disable Signups"
+                      description="Lock the registration page to prevent new users."
+                      checked={adminSettings.disableSignups}
+                      onChange={() => setAdminSettings({ ...adminSettings, disableSignups: !adminSettings.disableSignups })}
+                    />
+                    <Toggle
+                      label="Disable Chatbot"
+                      description="Hide the chatbot widget globally across the site."
+                      checked={adminSettings.disableChatbot}
+                      onChange={() => setAdminSettings({ ...adminSettings, disableChatbot: !adminSettings.disableChatbot })}
+                    />
+                  </div>
+                </div>
+
+                {/* Maintenance Customization */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group hover:border-amber-100 transition-colors">
+                  <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-4 bg-gray-50/50">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[#1a1f2c]">Maintenance Message</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Customize the lockout screen message.</p>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <textarea
+                      rows="4"
+                      value={adminSettings.maintenanceMessage}
+                      onChange={(e) => setAdminSettings({ ...adminSettings, maintenanceMessage: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all shadow-sm resize-none leading-relaxed"
+                      placeholder="Enter the maintenance message..."
+                    />
+                  </div>
+                </div>
+
+                {/* Notifications */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group hover:border-indigo-100 transition-colors">
+                  <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-4 bg-gray-50/50">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600">
+                      <Bell className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[#1a1f2c]">Email Notifications</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Configure automated alert emails.</p>
+                    </div>
+                  </div>
+                  <div className="px-6 py-2">
+                    <Toggle
+                      label="New User Alerts"
+                      description="Receive an email when a new user signs up."
+                      checked={adminSettings.emailNotifications}
+                      onChange={() => setAdminSettings({ ...adminSettings, emailNotifications: !adminSettings.emailNotifications })}
+                    />
+                    <Toggle
+                      label="Subscription Alerts"
+                      description="Receive an email for new or upgraded subscriptions."
+                      checked={adminSettings.newSubscriptionAlerts}
+                      onChange={() => setAdminSettings({ ...adminSettings, newSubscriptionAlerts: !adminSettings.newSubscriptionAlerts })}
+                    />
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>

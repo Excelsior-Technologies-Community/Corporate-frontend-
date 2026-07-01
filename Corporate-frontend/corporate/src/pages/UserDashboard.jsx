@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Settings, Activity, Folder, Plus, ArrowRight, Clock, Star, ArrowLeft, LogOut } from 'lucide-react';
+import { LayoutDashboard, Settings, Activity, Folder, Plus, ArrowRight, Clock, Star, ArrowLeft, LogOut, Wrench } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { io } from 'socket.io-client';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -17,6 +18,9 @@ const UserDashboard = () => {
     } else {
       navigate('/login');
     }
+
+    // Fetch settings from API
+    // Not needed anymore for Maintenance Mode (handled in App.jsx)
   }, [navigate]);
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
@@ -77,6 +81,8 @@ const UserDashboard = () => {
     window.dispatchEvent(new Event('authChange'));
     navigate('/');
   };
+
+
 
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans pb-12">

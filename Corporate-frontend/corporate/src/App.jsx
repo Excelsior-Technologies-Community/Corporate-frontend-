@@ -1,5 +1,7 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import { Wrench } from 'lucide-react';
 import axios from 'axios';
 import { Toaster, toast } from 'react-hot-toast';
 import Home from './pages/Home';
@@ -51,9 +53,55 @@ const UserProtectedRoute = ({ children }) => {
   return children;
 };
 
-export default function App() {
+const AppContent = () => {
+  const location = useLocation();
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('We are currently performing scheduled maintenance. The dashboard will be back online shortly. Thank you for your patience!');
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/admin/settings');
+        if (res.data.status === 'success' && res.data.data) {
+          if (res.data.data.maintenanceMode) setMaintenanceMode(true);
+          if (res.data.data.maintenanceMessage) setMaintenanceMessage(res.data.data.maintenanceMessage);
+        }
+      } catch (e) {
+        console.error('Failed to fetch settings for maintenance', e);
+      }
+    };
+    fetchSettings();
+
+    const socket = io('http://localhost:5000');
+    socket.on('settingsUpdated', (fetchedSettings) => {
+      setMaintenanceMode(fetchedSettings.maintenanceMode === 'true' || fetchedSettings.maintenanceMode === true);
+      if (fetchedSettings.maintenanceMessage) setMaintenanceMessage(fetchedSettings.maintenanceMessage);
+    });
+
+    return () => socket.disconnect();
+  }, []);
+
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  if (maintenanceMode && !isAdminRoute) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col justify-center items-center py-20 px-4 sm:px-6 lg:px-8 font-sans">
+        <div className="bg-white p-10 rounded-3xl shadow-sm max-w-md w-full text-center border border-gray-100 relative overflow-hidden animate-in fade-in zoom-in duration-500">
+          <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
+          <div className="w-20 h-20 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-6 transform -rotate-6">
+            <Wrench className="w-10 h-10 text-amber-500 transform rotate-6" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#1a1f2c] mb-3">Under Maintenance</h2>
+          <p className="text-gray-500 leading-relaxed">
+            {maintenanceMessage}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <BrowserRouter>
+    <>
       <Toaster position="top-right" />
       <Routes>
         {/* Public Routes */}
@@ -99,6 +147,14 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Chatbot />
+    </>
+  );
+};
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
     </BrowserRouter>
   );
 }

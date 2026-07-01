@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { MessageCircle, X, Send, User, Bot, Loader2 } from 'lucide-react';
+import axios from 'axios';
 
 const socket = io('http://localhost:5000');
 
@@ -11,18 +12,39 @@ const Chatbot = () => {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isDisabled, setIsDisabled] = useState(false);
   
   const messagesEndRef = useRef(null);
 
-  // Listen for socket replies
+  // Fetch settings to check if chatbot is disabled
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/admin/settings');
+        if (res.data.status === 'success' && res.data.data) {
+          if (res.data.data.disableChatbot) setIsDisabled(true);
+        }
+      } catch (e) {
+        console.error('Failed to fetch settings for chatbot', e);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  // Listen for socket replies and settings updates
   useEffect(() => {
     socket.on('chatReply', (answer) => {
       setMessages((prev) => [...prev, { role: 'bot', content: answer }]);
       setIsTyping(false);
     });
 
+    socket.on('settingsUpdated', (fetchedSettings) => {
+      setIsDisabled(fetchedSettings.disableChatbot === 'true' || fetchedSettings.disableChatbot === true);
+    });
+
     return () => {
       socket.off('chatReply');
+      socket.off('settingsUpdated');
     };
   }, []);
 
@@ -51,6 +73,8 @@ const Chatbot = () => {
       setIsTyping(false);
     }
   };
+
+  if (isDisabled) return null;
 
   return (
     <>
